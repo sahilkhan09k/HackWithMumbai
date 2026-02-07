@@ -1,38 +1,100 @@
-import { useState } from 'react';
-import { Search, Edit, CheckCircle, Upload } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Search, Edit, CheckCircle, Upload, Loader2 } from 'lucide-react';
 import Sidebar from '../../components/Sidebar';
+import { apiService } from '../../services/api';
 
 const ManageIssues = () => {
+    const [issues, setIssues] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedIssue, setSelectedIssue] = useState(null);
     const [showModal, setShowModal] = useState(false);
+    const [newStatus, setNewStatus] = useState('');
+    const [updating, setUpdating] = useState(false);
 
-    const issues = [
-        { id: 1, title: 'Pothole on Main Street', status: 'pending', priority: 'high', category: 'roads', date: '2026-02-07' },
-        { id: 2, title: 'Water leak near park', status: 'in-progress', priority: 'high', category: 'water', date: '2026-02-06' },
-        { id: 3, title: 'Broken street light', status: 'acknowledged', priority: 'medium', category: 'electricity', date: '2026-02-05' },
-        { id: 4, title: 'Garbage not collected', status: 'pending', priority: 'low', category: 'sanitation', date: '2026-02-07' },
-    ];
+    useEffect(() => {
+        fetchIssues();
+    }, []);
+
+    const fetchIssues = async () => {
+        try {
+            setLoading(true);
+            const response = await apiService.getAllIssues();
+            setIssues(response.data);
+        } catch (err) {
+            setError(err.message || 'Failed to fetch issues');
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const handleUpdateIssue = (issue) => {
         setSelectedIssue(issue);
+        setNewStatus(issue.status);
         setShowModal(true);
     };
 
-    const handleSaveUpdate = () => {
-        // Save logic here
-        setShowModal(false);
-        setSelectedIssue(null);
+    const handleSaveUpdate = async () => {
+        if (!selectedIssue || !newStatus) return;
+
+        try {
+            setUpdating(true);
+            await apiService.updateIssueStatus(selectedIssue._id, newStatus);
+
+            // Update local state
+            setIssues(issues.map(issue =>
+                issue._id === selectedIssue._id
+                    ? { ...issue, status: newStatus }
+                    : issue
+            ));
+
+            setShowModal(false);
+            setSelectedIssue(null);
+        } catch (err) {
+            alert(err.message || 'Failed to update issue');
+        } finally {
+            setUpdating(false);
+        }
     };
 
     const getStatusColor = (status) => {
         switch (status) {
-            case 'resolved': return 'bg-green-100 text-green-700';
-            case 'in-progress': return 'bg-blue-100 text-blue-700';
-            case 'acknowledged': return 'bg-yellow-100 text-yellow-700';
+            case 'Resolved': return 'bg-green-100 text-green-700';
+            case 'In Progress': return 'bg-blue-100 text-blue-700';
+            case 'Pending': return 'bg-yellow-100 text-yellow-700';
             default: return 'bg-gray-200 text-gray-700';
         }
     };
+
+    const filteredIssues = issues.filter(issue =>
+        issue.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        issue.description.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
+    if (loading) {
+        return (
+            <div className="flex min-h-screen bg-gray-50">
+                <Sidebar isAdmin={true} />
+                <div className="flex-1 ml-64 p-8 flex items-center justify-center">
+                    <Loader2 className="h-12 w-12 animate-spin text-primary-600" />
+                </div>
+            </div>
+        );
+    }
+
+    if (error) {
+        return (
+            <div className="flex min-h-screen bg-gray-50">
+                <Sidebar isAdmin={true} />
+                <div className="flex-1 ml-64 p-8">
+                    <div className="card bg-red-50 border-2 border-red-200 text-center py-12">
+                        <p className="text-red-700 text-lg">{error}</p>
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="flex min-h-screen bg-gray-50">
@@ -53,7 +115,7 @@ const ManageIssues = () => {
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                             className="input-field pl-10"
-                            placeholder="Search issues by title, category, or ID..."
+                            placeholder="Search issues by title or description..."
                         />
                     </div>
                 </div>
@@ -66,33 +128,39 @@ const ManageIssues = () => {
                                 <tr>
                                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
                                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Title</th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
                                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Priority</th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Score</th>
                                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
                                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                                 </tr>
                             </thead>
                             <tbody className="bg-white divide-y divide-gray-200">
-                                {issues.map(issue => (
-                                    <tr key={issue.id} className="hover:bg-gray-50">
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">#{issue.id}</td>
+                                {filteredIssues.map(issue => (
+                                    <tr key={issue._id} className="hover:bg-gray-50">
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                            #{issue._id.slice(-6)}
+                                        </td>
                                         <td className="px-6 py-4 text-sm text-gray-900">{issue.title}</td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{issue.category}</td>
                                         <td className="px-6 py-4 whitespace-nowrap">
-                                            <span className={`text-xs px-2 py-1 rounded ${issue.priority === 'high' ? 'bg-red-100 text-red-700' :
-                                                    issue.priority === 'medium' ? 'bg-yellow-100 text-yellow-700' :
+                                            <span className={`text-xs px-2 py-1 rounded ${issue.priority === 'High' ? 'bg-red-100 text-red-700' :
+                                                    issue.priority === 'Medium' ? 'bg-yellow-100 text-yellow-700' :
                                                         'bg-green-100 text-green-700'
                                                 }`}>
                                                 {issue.priority}
                                             </span>
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                                            {issue.priorityScore}
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             <span className={`text-xs px-2 py-1 rounded ${getStatusColor(issue.status)}`}>
                                                 {issue.status}
                                             </span>
                                         </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{issue.date}</td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                                            {new Date(issue.createdAt).toLocaleDateString()}
+                                        </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm">
                                             <button
                                                 onClick={() => handleUpdateIssue(issue)}
@@ -109,46 +177,66 @@ const ManageIssues = () => {
                     </div>
                 </div>
 
+                {filteredIssues.length === 0 && (
+                    <div className="card text-center py-12 mt-6">
+                        <p className="text-gray-600 text-lg">No issues found</p>
+                        <p className="text-sm text-gray-500 mt-2">Try adjusting your search</p>
+                    </div>
+                )}
+
                 {/* Update Modal */}
                 {showModal && selectedIssue && (
                     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
                         <div className="bg-white rounded-lg p-8 max-w-2xl w-full mx-4">
-                            <h2 className="text-2xl font-bold mb-6">Update Issue #{selectedIssue.id}</h2>
+                            <h2 className="text-2xl font-bold mb-6">Update Issue #{selectedIssue._id.slice(-6)}</h2>
 
                             <div className="space-y-4">
                                 <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">Title</label>
+                                    <p className="text-gray-900">{selectedIssue.title}</p>
+                                </div>
+
+                                <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
-                                    <select className="input-field">
-                                        <option value="pending">Pending</option>
-                                        <option value="acknowledged">Acknowledged</option>
-                                        <option value="in-progress">In Progress</option>
-                                        <option value="resolved">Resolved</option>
+                                    <select
+                                        className="input-field"
+                                        value={newStatus}
+                                        onChange={(e) => setNewStatus(e.target.value)}
+                                    >
+                                        <option value="Pending">Pending</option>
+                                        <option value="In Progress">In Progress</option>
+                                        <option value="Resolved">Resolved</option>
                                     </select>
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">Admin Remarks</label>
-                                    <textarea
-                                        className="input-field"
-                                        rows="4"
-                                        placeholder="Add notes about the resolution process..."
-                                    />
-                                </div>
-
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">Resolution Image (Optional)</label>
-                                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
-                                        <Upload className="h-8 w-8 text-gray-400 mx-auto mb-2" />
-                                        <p className="text-sm text-gray-600">Upload before/after image</p>
-                                    </div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">Current Priority</label>
+                                    <span className={`text-xs px-3 py-1 rounded-full ${selectedIssue.priority === 'High' ? 'bg-red-100 text-red-700' :
+                                            selectedIssue.priority === 'Medium' ? 'bg-yellow-100 text-yellow-700' :
+                                                'bg-green-100 text-green-700'
+                                        }`}>
+                                        {selectedIssue.priority} (Score: {selectedIssue.priorityScore})
+                                    </span>
                                 </div>
 
                                 <div className="flex gap-3 pt-4">
-                                    <button onClick={handleSaveUpdate} className="btn-primary flex items-center">
-                                        <CheckCircle className="h-4 w-4 mr-2" />
-                                        Save Update
+                                    <button
+                                        onClick={handleSaveUpdate}
+                                        className="btn-primary flex items-center"
+                                        disabled={updating}
+                                    >
+                                        {updating ? (
+                                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                        ) : (
+                                            <CheckCircle className="h-4 w-4 mr-2" />
+                                        )}
+                                        {updating ? 'Updating...' : 'Save Update'}
                                     </button>
-                                    <button onClick={() => setShowModal(false)} className="btn-secondary">
+                                    <button
+                                        onClick={() => setShowModal(false)}
+                                        className="btn-secondary"
+                                        disabled={updating}
+                                    >
                                         Cancel
                                     </button>
                                 </div>

@@ -97,6 +97,17 @@ class ApiService {
         return this.request('/user/profile');
     }
 
+    async getUserIssues() {
+        return this.request('/user/issues');
+    }
+
+    async updateUserProfile(userData) {
+        return this.request('/user/profile', {
+            method: 'PUT',
+            body: JSON.stringify(userData),
+        });
+    }
+
     // Issue endpoints
     async createIssue(formData) {
         return this.uploadRequest('/issue/postIssue', formData);

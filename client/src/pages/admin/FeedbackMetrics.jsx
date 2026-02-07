@@ -1,53 +1,47 @@
-import { useState } from 'react';
-import { Star, ThumbsUp, ThumbsDown, MessageSquare } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Star, ThumbsUp, MessageSquare, Loader2 } from 'lucide-react';
 import Sidebar from '../../components/Sidebar';
+import { apiService } from '../../services/api';
 
 const FeedbackMetrics = () => {
-    const [selectedIssue, setSelectedIssue] = useState(null);
+    const [issues, setIssues] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
 
-    const resolvedIssues = [
-        {
-            id: 1,
-            title: 'Pothole on Main Street',
-            resolvedDate: '2026-02-05',
-            rating: 5,
-            feedback: 'Excellent work! Fixed quickly and professionally.',
-            userName: 'John Doe',
-            trustImpact: '+10'
-        },
-        {
-            id: 2,
-            title: 'Broken street light',
-            resolvedDate: '2026-02-04',
-            rating: 4,
-            feedback: 'Good job, but took a bit longer than expected.',
-            userName: 'Jane Smith',
-            trustImpact: '+7'
-        },
-        {
-            id: 3,
-            title: 'Water leak near park',
-            resolvedDate: '2026-02-03',
-            rating: 3,
-            feedback: 'Fixed but the area still needs cleanup.',
-            userName: 'Mike Johnson',
-            trustImpact: '+3'
-        },
-        {
-            id: 4,
-            title: 'Garbage collection issue',
-            resolvedDate: '2026-02-02',
-            rating: 5,
-            feedback: 'Perfect! Very responsive team.',
-            userName: 'Sarah Williams',
-            trustImpact: '+10'
-        },
-    ];
+    useEffect(() => {
+        fetchIssues();
+    }, []);
+
+    const fetchIssues = async () => {
+        try {
+            setLoading(true);
+            const response = await apiService.getAllIssues();
+            setIssues(response.data);
+        } catch (err) {
+            setError(err.message || 'Failed to fetch issues');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const resolvedIssues = issues.filter(i => i.status === 'Resolved');
+
+    // Mock feedback data (in real app, this would come from API)
+    const mockFeedback = resolvedIssues.slice(0, 4).map((issue, idx) => ({
+        ...issue,
+        rating: 5 - idx,
+        feedback: idx === 0 ? 'Excellent work! Fixed quickly and professionally.' :
+            idx === 1 ? 'Good job, but took a bit longer than expected.' :
+                idx === 2 ? 'Fixed but the area still needs cleanup.' :
+                    'Perfect! Very responsive team.',
+        userName: ['John Doe', 'Jane Smith', 'Mike Johnson', 'Sarah Williams'][idx],
+        trustImpact: ['+10', '+7', '+3', '+10'][idx]
+    }));
 
     const trustMetrics = {
         overallScore: 4.2,
-        totalFeedback: 156,
-        positiveRate: 87,
+        totalFeedback: resolvedIssues.length,
+        positiveRate: resolvedIssues.length > 0 ? Math.round((resolvedIssues.length / issues.length) * 100) : 0,
         avgResolutionQuality: 4.1,
         citizenTrustIndex: 85
     };
@@ -61,6 +55,30 @@ const FeedbackMetrics = () => {
         ));
     };
 
+    if (loading) {
+        return (
+            <div className="flex min-h-screen bg-gray-50">
+                <Sidebar isAdmin={true} />
+                <div className="flex-1 ml-64 p-8 flex items-center justify-center">
+                    <Loader2 className="h-12 w-12 animate-spin text-primary-600" />
+                </div>
+            </div>
+        );
+    }
+
+    if (error) {
+        return (
+            <div className="flex min-h-screen bg-gray-50">
+                <Sidebar isAdmin={true} />
+                <div className="flex-1 ml-64 p-8">
+                    <div className="card bg-red-50 border-2 border-red-200 text-center py-12">
+                        <p className="text-red-700 text-lg">{error}</p>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className="flex min-h-screen bg-gray-50">
             <Sidebar isAdmin={true} />
@@ -71,7 +89,6 @@ const FeedbackMetrics = () => {
                     <p className="text-gray-600">Accountability and citizen satisfaction tracking</p>
                 </div>
 
-                {/* Trust Metrics Overview */}
                 <div className="grid grid-cols-1 md:grid-cols-5 gap-6 mb-8">
                     <div className="card text-center">
                         <Star className="h-10 w-10 text-yellow-500 mx-auto mb-2" />
@@ -82,13 +99,13 @@ const FeedbackMetrics = () => {
                     <div className="card text-center">
                         <MessageSquare className="h-10 w-10 text-blue-500 mx-auto mb-2" />
                         <p className="text-3xl font-bold text-blue-600 mb-1">{trustMetrics.totalFeedback}</p>
-                        <p className="text-sm text-gray-600">Total Feedback</p>
+                        <p className="text-sm text-gray-600">Total Resolved</p>
                     </div>
 
                     <div className="card text-center">
                         <ThumbsUp className="h-10 w-10 text-green-500 mx-auto mb-2" />
                         <p className="text-3xl font-bold text-green-600 mb-1">{trustMetrics.positiveRate}%</p>
-                        <p className="text-sm text-gray-600">Positive Rate</p>
+                        <p className="text-sm text-gray-600">Resolution Rate</p>
                     </div>
 
                     <div className="card text-center">
@@ -104,7 +121,6 @@ const FeedbackMetrics = () => {
                     </div>
                 </div>
 
-                {/* Rating Distribution */}
                 <div className="card mb-8">
                     <h2 className="text-xl font-bold mb-4">Rating Distribution</h2>
                     <div className="space-y-3">
@@ -130,40 +146,45 @@ const FeedbackMetrics = () => {
                     </div>
                 </div>
 
-                {/* Recent Feedback */}
                 <div className="card">
                     <h2 className="text-xl font-bold mb-4">Recent Citizen Feedback</h2>
-                    <div className="space-y-4">
-                        {resolvedIssues.map(issue => (
-                            <div key={issue.id} className="p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition">
-                                <div className="flex items-start justify-between mb-3">
-                                    <div className="flex-1">
-                                        <h3 className="font-semibold text-lg mb-1">{issue.title}</h3>
-                                        <p className="text-sm text-gray-600 mb-2">
-                                            Resolved on {issue.resolvedDate} • Reported by {issue.userName}
-                                        </p>
-                                        <div className="flex items-center gap-2 mb-2">
-                                            {renderStars(issue.rating)}
+                    {mockFeedback.length > 0 ? (
+                        <div className="space-y-4">
+                            {mockFeedback.map(issue => (
+                                <div key={issue._id} className="p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition">
+                                    <div className="flex items-start justify-between mb-3">
+                                        <div className="flex-1">
+                                            <h3 className="font-semibold text-lg mb-1">{issue.title}</h3>
+                                            <p className="text-sm text-gray-600 mb-2">
+                                                Resolved • Reported by {issue.userName}
+                                            </p>
+                                            <div className="flex items-center gap-2 mb-2">
+                                                {renderStars(issue.rating)}
+                                            </div>
+                                        </div>
+                                        <div className="text-right">
+                                            <span className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${parseInt(issue.trustImpact) >= 8 ? 'bg-green-100 text-green-700' :
+                                                    parseInt(issue.trustImpact) >= 5 ? 'bg-blue-100 text-blue-700' :
+                                                        'bg-yellow-100 text-yellow-700'
+                                                }`}>
+                                                Trust {issue.trustImpact}
+                                            </span>
                                         </div>
                                     </div>
-                                    <div className="text-right">
-                                        <span className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${parseInt(issue.trustImpact) >= 8 ? 'bg-green-100 text-green-700' :
-                                                parseInt(issue.trustImpact) >= 5 ? 'bg-blue-100 text-blue-700' :
-                                                    'bg-yellow-100 text-yellow-700'
-                                            }`}>
-                                            Trust {issue.trustImpact}
-                                        </span>
+                                    <div className="bg-white p-3 rounded border-l-4 border-primary-600">
+                                        <p className="text-gray-700 italic">"{issue.feedback}"</p>
                                     </div>
                                 </div>
-                                <div className="bg-white p-3 rounded border-l-4 border-primary-600">
-                                    <p className="text-gray-700 italic">"{issue.feedback}"</p>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <div className="text-center py-12">
+                            <p className="text-gray-600">No feedback available yet</p>
+                            <p className="text-sm text-gray-500 mt-2">Feedback will appear as issues are resolved</p>
+                        </div>
+                    )}
                 </div>
 
-                {/* Trust Score Explanation */}
                 <div className="card mt-6 bg-blue-50 border-2 border-blue-200">
                     <h3 className="font-semibold text-blue-900 mb-3">How Trust Score Works</h3>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-blue-800">
