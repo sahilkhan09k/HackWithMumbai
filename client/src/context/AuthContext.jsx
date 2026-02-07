@@ -25,6 +25,7 @@ export const AuthProvider = ({ children }) => {
             await apiService.logout();
         } catch (error) {
             console.error('Logout error:', error);
+            // Continue with logout even if API call fails
         } finally {
             setUser(null);
             localStorage.removeItem('user');

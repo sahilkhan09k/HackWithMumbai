@@ -31,7 +31,12 @@ const Login = () => {
                 navigate('/dashboard');
             }
         } catch (err) {
-            setError(err.message || 'Login failed. Please check your credentials.');
+            console.error('Login error:', err);
+            if (err.message.includes('Invalid credentials') || err.message.includes('401')) {
+                setError('Invalid email or password. Please check your credentials or register a new account.');
+            } else {
+                setError(err.message || 'Login failed. Please try again.');
+            }
         } finally {
             setLoading(false);
         }
