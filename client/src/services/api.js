@@ -13,13 +13,12 @@ class ApiService {
                 'Content-Type': 'application/json',
                 ...options.headers,
             },
-            credentials: 'include', // Important for cookies
+            credentials: 'include',
         };
 
         try {
             const response = await fetch(url, config);
 
-            // Check if response is JSON
             const contentType = response.headers.get('content-type');
             if (!contentType || !contentType.includes('application/json')) {
                 throw new Error(`Server error: ${response.status} ${response.statusText}`);
@@ -34,6 +33,34 @@ class ApiService {
             return data;
         } catch (error) {
             console.error('API Error:', error);
+            throw error;
+        }
+    }
+
+    async uploadRequest(endpoint, formData) {
+        const url = `${this.baseURL}${endpoint}`;
+
+        try {
+            const response = await fetch(url, {
+                method: 'POST',
+                body: formData,
+                credentials: 'include',
+            });
+
+            const contentType = response.headers.get('content-type');
+            if (!contentType || !contentType.includes('application/json')) {
+                throw new Error(`Server error: ${response.status} ${response.statusText}`);
+            }
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.message || `HTTP error! status: ${response.status}`);
+            }
+
+            return data;
+        } catch (error) {
+            console.error('Upload Error:', error);
             throw error;
         }
     }
@@ -68,6 +95,34 @@ class ApiService {
     // User endpoints
     async getCurrentUser() {
         return this.request('/user/profile');
+    }
+
+    // Issue endpoints
+    async createIssue(formData) {
+        return this.uploadRequest('/issue/postIssue', formData);
+    }
+
+    async getAllIssues() {
+        return this.request('/issue/getAllIssue');
+    }
+
+    async getIssueById(issueId) {
+        return this.request(`/issue/getIssue/${issueId}`);
+    }
+
+    async updateIssueStatus(issueId, status) {
+        return this.request(`/issue/updateStatus/${issueId}`, {
+            method: 'PUT',
+            body: JSON.stringify({ status }),
+        });
+    }
+
+    async getIssuesByPriority() {
+        return this.request('/issue/getIssuesByPriority');
+    }
+
+    async getAdminStats() {
+        return this.request('/issue/adminStats');
     }
 }
 
