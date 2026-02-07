@@ -10,66 +10,53 @@ const issueSchema = new Schema({
         type: String,
         required: true
     },
+    imageUrl: {
+        type: String,
+        required: true
+    },
     category: {
         type: String,
-        required: true,
-        enum: ['infrastructure', 'sanitation', 'safety', 'environment', 'other']
+        enum: ['Waste', 'Road', 'Water', 'Electricity', 'Other'],
+        default: 'Other'
     },
-    status: {
-        type: String,
-        enum: ['pending', 'in-progress', 'resolved', 'rejected'],
-        default: 'pending'
+    priorityScore: {
+        type: Number,
+        required: true,
+        min: 0,
+        max: 100
     },
     priority: {
         type: String,
-        enum: ['low', 'medium', 'high', 'critical'],
-        default: 'medium'
+        enum: ['Low', 'Medium', 'High'],
+        default: 'Low'
+    },
+    status: {
+        type: String,
+        enum: ['Pending', 'In Progress', 'Resolved'],
+        default: 'Pending'
     },
     location: {
-        type: {
-            type: String,
-            enum: ['Point'],
-            default: 'Point'
-        },
-        coordinates: {
-            type: [Number],
+        lat: {
+            type: Number,
             required: true
         },
-        address: String
+        lng: {
+            type: Number,
+            required: true
+        }
     },
-    images: [{
-        type: String
-    }],
+    scoreBreakdown: {
+        severity: Number,
+        frequency: Number,
+        locationImpact: Number,
+        timePending: Number,
+        aiAdjustment: Number
+    },
     reportedBy: {
         type: Schema.Types.ObjectId,
         ref: 'User',
         required: true
-    },
-    verifications: [{
-        user: {
-            type: Schema.Types.ObjectId,
-            ref: 'User'
-        },
-        verifiedAt: {
-            type: Date,
-            default: Date.now
-        }
-    }],
-    assignedTo: {
-        type: Schema.Types.ObjectId,
-        ref: 'User'
-    },
-    resolvedAt: Date,
-    feedback: {
-        rating: {
-            type: Number,
-            min: 1,
-            max: 5
-        },
-        comment: String
     }
 }, { timestamps: true });
-
-issueSchema.index({ location: '2dsphere' });
 
 export const Issue = mongoose.model('Issue', issueSchema);
