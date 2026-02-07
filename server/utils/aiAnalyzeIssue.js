@@ -1,9 +1,23 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-
 export const aiAnalyzeIssue = async (text) => {
     try {
+        // Get API key with fallback
+        const apiKey = process.env.GEMINI_API_KEY;
+
+        // AI is enabled but will use default if API key is invalid
+        if (!apiKey) {
+            console.log('AI analysis disabled - no API key provided');
+            return {
+                severity: 6,
+                urgencyBoost: 5,
+                category: "Other",
+                explanation: "Default priority scoring applied (no API key)"
+            };
+        }
+
+        const genAI = new GoogleGenerativeAI(apiKey);
+        // Using gemini-pro model (stable version)
         const model = genAI.getGenerativeModel({ model: "gemini-pro" });
 
         const prompt = `
@@ -38,11 +52,12 @@ Issue description:
     } catch (error) {
         console.error("Gemini AI failed:", error.message);
 
+        // Return default values instead of failing
         return {
-            severity: 5,
-            urgencyBoost: 0,
+            severity: 6,
+            urgencyBoost: 5,
             category: "Other",
-            explanation: "Default priority applied due to analysis failure"
+            explanation: "Default priority applied due to AI analysis failure"
         };
     }
 };
