@@ -2,6 +2,7 @@ import { asyncHandler } from "../utils/asyncHandler.js";
 import { apiError } from "../utils/apiError.js";
 import { apiResponse } from "../utils/apiResponse.js";
 import { User } from "../models/user.model.js";
+import { BannedEmail } from "../models/bannedEmail.model.js";
 import jwt from "jsonwebtoken";
 
 const generateAccessAndRefreshToken = async (userId) => {
@@ -25,6 +26,12 @@ export const registerUser = asyncHandler(async (req, res) => {
     throw new apiError(400, "All fields are required");
   }
 
+  // Check if email is banned
+  const bannedEmail = await BannedEmail.findOne({ email: email.toLowerCase() });
+  if (bannedEmail) {
+    throw new apiError(403, "This email address has been permanently banned from the platform due to multiple fake reports. You cannot create a new account with this email.");
+  }
+
   const existingUser = await User.findOne({ email });
   if (existingUser) {
     throw new apiError(409, "User already exists");
@@ -45,6 +52,12 @@ export const loginUser = asyncHandler(async (req, res) => {
 
   if (!email || !password) {
     throw new apiError(400, "All fields are required");
+  }
+
+  // Check if email is banned
+  const bannedEmail = await BannedEmail.findOne({ email: email.toLowerCase() });
+  if (bannedEmail) {
+    throw new apiError(403, "This email address has been permanently banned from the platform due to multiple fake reports. You cannot access your account.");
   }
 
   const user = await User.findOne({ email }).select("+password");

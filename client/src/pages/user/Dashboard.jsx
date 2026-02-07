@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { TrendingUp, CheckCircle, Clock, Award, AlertCircle, MapPin, Loader } from 'lucide-react';
+import { TrendingUp, CheckCircle, Clock, Award, AlertCircle, MapPin, Loader, Shield } from 'lucide-react';
 import Sidebar from '../../components/Sidebar';
 import { Link } from 'react-router-dom';
 import { apiService } from '../../services/api';
@@ -93,6 +93,38 @@ const Dashboard = () => {
 
                 {/* Stats Widgets */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                    {/* Trust Score Widget */}
+                    <Link to="/profile" className="stat-card hover:shadow-xl transition-shadow cursor-pointer">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-gray-600 text-sm mb-1 font-medium">Trust Score</p>
+                                <p className={`text-4xl font-bold bg-gradient-to-r ${(user?.trustScore ?? 100) >= 75 ? 'from-green-600 to-green-700' :
+                                        (user?.trustScore ?? 100) >= 50 ? 'from-yellow-600 to-yellow-700' :
+                                            (user?.trustScore ?? 100) >= 25 ? 'from-orange-600 to-orange-700' :
+                                                'from-red-600 to-red-700'
+                                    } bg-clip-text text-transparent`}>
+                                    {user?.trustScore ?? 100}
+                                </p>
+                            </div>
+                            <div className={`p-3 rounded-xl ${(user?.trustScore ?? 100) >= 75 ? 'bg-green-100' :
+                                    (user?.trustScore ?? 100) >= 50 ? 'bg-yellow-100' :
+                                        (user?.trustScore ?? 100) >= 25 ? 'bg-orange-100' :
+                                            'bg-red-100'
+                                }`}>
+                                <Shield className={`h-8 w-8 ${(user?.trustScore ?? 100) >= 75 ? 'text-green-600' :
+                                        (user?.trustScore ?? 100) >= 50 ? 'text-yellow-600' :
+                                            (user?.trustScore ?? 100) >= 25 ? 'text-orange-600' :
+                                                'text-red-600'
+                                    }`} />
+                            </div>
+                        </div>
+                        {(user?.trustScore ?? 100) < 100 && (
+                            <div className="mt-3 text-xs text-yellow-700 bg-yellow-50 px-2 py-1 rounded">
+                                ⚠️ Click to view details
+                            </div>
+                        )}
+                    </Link>
+
                     <div className="stat-card">
                         <div className="flex items-center justify-between">
                             <div>

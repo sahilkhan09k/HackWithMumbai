@@ -7,7 +7,8 @@ import {
     getIssueById,
     updateIssueStatus,
     getAdminIssueStats,
-    getIssuesByPriority
+    getIssuesByPriority,
+    reportIssueAsFake
 } from "../controllers/issue.controller.js";
 import { upload } from "../middlewares/multer.middleware.js";
 
@@ -20,7 +21,7 @@ router.post(
     createIssue
 );
 
-router.get("/getAllIssue", verifyJWT, getAllIssues);
+router.get("/getAllIssue", getAllIssues); // Public - no auth required for transparency
 
 router.get("/getIssue/:issueId", verifyJWT, getIssueById);
 
@@ -43,6 +44,13 @@ router.get(
     verifyJWT,
     requireAdmin,
     getIssuesByPriority
+);
+
+router.put(
+    "/reportAsFake/:issueId",
+    verifyJWT,
+    requireAdmin,
+    reportIssueAsFake
 );
 
 export default router;

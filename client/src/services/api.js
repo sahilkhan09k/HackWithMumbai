@@ -27,7 +27,11 @@ class ApiService {
             const data = await response.json();
 
             if (!response.ok) {
-                throw new Error(data.message || `HTTP error! status: ${response.status}`);
+                // Create error with status code for better handling
+                const error = new Error(data.message || `HTTP error! status: ${response.status}`);
+                error.status = response.status;
+                error.data = data;
+                throw error;
             }
 
             return data;
@@ -55,7 +59,11 @@ class ApiService {
             const data = await response.json();
 
             if (!response.ok) {
-                throw new Error(data.message || `HTTP error! status: ${response.status}`);
+                // Create error with status code for better handling
+                const error = new Error(data.message || `HTTP error! status: ${response.status}`);
+                error.status = response.status;
+                error.data = data;
+                throw error;
             }
 
             return data;
@@ -134,6 +142,12 @@ class ApiService {
 
     async getAdminStats() {
         return this.request('/issue/adminStats');
+    }
+
+    async reportIssueAsFake(issueId) {
+        return this.request(`/issue/reportAsFake/${issueId}`, {
+            method: 'PUT',
+        });
     }
 }
 

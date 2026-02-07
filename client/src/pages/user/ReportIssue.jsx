@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Upload, MapPin, CheckCircle, AlertCircle, Loader } from 'lucide-react';
+import { Upload, MapPin, CheckCircle, AlertCircle, Loader, Clock, AlertTriangle } from 'lucide-react';
 import Sidebar from '../../components/Sidebar';
 import { useNavigate } from 'react-router-dom';
 import { apiService } from '../../services/api';
@@ -14,6 +14,7 @@ const ReportIssue = () => {
     });
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+    const [errorType, setErrorType] = useState(''); // 'cooldown', 'limit', 'location', 'general'
     const [submitted, setSubmitted] = useState(false);
     const navigate = useNavigate();
 
@@ -59,6 +60,7 @@ const ReportIssue = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError('');
+        setErrorType('');
         setLoading(true);
 
         try {
@@ -86,7 +88,30 @@ const ReportIssue = () => {
             }, 2000);
         } catch (err) {
             console.error('Submit error:', err);
-            setError(err.message || 'Failed to submit issue. Please try again.');
+            const errorMessage = err.message || 'Failed to submit issue. Please try again.';
+
+            // Handle specific error types
+            // Check for 429 status code (rate limiting)
+            if (err.status === 429 || errorMessage.includes('429') || errorMessage.includes('Too Many Requests')) {
+                // Check if it's cooldown or daily limit
+                if (errorMessage.includes('wait') && errorMessage.includes('minutes')) {
+                    setErrorType('cooldown');
+                    setError(errorMessage);
+                } else if (errorMessage.includes('Daily issue limit')) {
+                    setErrorType('limit');
+                    setError(errorMessage);
+                } else {
+                    // Default cooldown message for 429 errors
+                    setErrorType('cooldown');
+                    setError('You can submit only one issue per 30 minutes. Please wait before submitting another report.');
+                }
+            } else if (errorMessage.includes('Multiple issues already reported at this location')) {
+                setErrorType('location');
+                setError(errorMessage);
+            } else {
+                setErrorType('general');
+                setError(errorMessage);
+            }
         } finally {
             setLoading(false);
         }
@@ -124,9 +149,67 @@ const ReportIssue = () => {
                     </div>
 
                     {error && (
-                        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl flex items-start space-x-3">
-                            <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
-                            <p className="text-sm text-red-800">{error}</p>
+                        <div className={`mb-6 p-5 rounded-xl border-2 ${errorType === 'cooldown' ? 'bg-amber-50 border-amber-300' :
+                            errorType === 'limit' ? 'bg-orange-50 border-orange-300' :
+                                errorType === 'location' ? 'bg-blue-50 border-blue-300' :
+                                    'bg-red-50 border-red-300'
+                            }`}>
+                            <div className="flex items-start space-x-3">
+                                {errorType === 'cooldown' && (
+                                    <Clock className="h-6 w-6 text-amber-600 flex-shrink-0 mt-0.5" />
+                                )}
+                                {errorType === 'limit' && (
+                                    <AlertTriangle className="h-6 w-6 text-orange-600 flex-shrink-0 mt-0.5" />
+                                )}
+                                {errorType === 'location' && (
+                                    <MapPin className="h-6 w-6 text-blue-600 flex-shrink-0 mt-0.5" />
+                                )}
+                                {errorType === 'general' && (
+                                    <AlertCircle className="h-6 w-6 text-red-600 flex-shrink-0 mt-0.5" />
+                                )}
+                                <div className="flex-1">
+                                    <h3 className={`font-semibold mb-1 ${errorType === 'cooldown' ? 'text-amber-900' :
+                                        errorType === 'limit' ? 'text-orange-900' :
+                                            errorType === 'location' ? 'text-blue-900' :
+                                                'text-red-900'
+                                        }`}>
+                                        {errorType === 'cooldown' && 'Cooldown Period Active'}
+                                        {errorType === 'limit' && 'Daily Limit Reached'}
+                                        {errorType === 'location' && 'Location Already Covered'}
+                                        {errorType === 'general' && 'Submission Failed'}
+                                    </h3>
+                                    <p className={`text-sm ${errorType === 'cooldown' ? 'text-amber-800' :
+                                        errorType === 'limit' ? 'text-orange-800' :
+                                            errorType === 'location' ? 'text-blue-800' :
+                                                'text-red-800'
+                                        }`}>
+                                        {error}
+                                    </p>
+                                    {errorType === 'cooldown' && (
+                                        <p className="text-xs text-amber-700 mt-2">
+                                            💡 This helps prevent spam and ensures quality reports
+                                        </p>
+                                    )}
+                                    {errorType === 'limit' && (
+                                        <p className="text-xs text-orange-700 mt-2">
+                                            💡 You can report up to 5 issues per day. Try again tomorrow!
+                                        </p>
+                                    )}
+                                    {errorType === 'location' && (
+                                        <div className="mt-3">
+                                            <p className="text-xs text-blue-700 mb-2">
+                                                💡 Instead of creating a new report, you can:
+                                            </p>
+                                            <button
+                                                onClick={() => navigate('/dashboard')}
+                                                className="text-sm font-medium text-blue-700 hover:text-blue-800 underline"
+                                            >
+                                                View existing issues in this area →
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
                         </div>
                     )}
 

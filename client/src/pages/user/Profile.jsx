@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { User, Mail, Calendar, Award, TrendingUp, CheckCircle, Clock } from 'lucide-react';
+import { User, Mail, Calendar, Award, TrendingUp, CheckCircle, Clock, Shield, AlertTriangle } from 'lucide-react';
 import Sidebar from '../../components/Sidebar';
 import { useAuth } from '../../context/AuthContext';
 import { apiService } from '../../services/api';
@@ -45,6 +45,24 @@ const Profile = () => {
     };
 
     const impactScore = stats.resolved * 10 + stats.inProgress * 5;
+
+    const getTrustScoreColor = (score) => {
+        if (score >= 75) return 'from-green-500 to-green-600';
+        if (score >= 50) return 'from-yellow-500 to-yellow-600';
+        if (score >= 25) return 'from-orange-500 to-orange-600';
+        return 'from-red-500 to-red-600';
+    };
+
+    const getTrustScoreStatus = (score) => {
+        if (score === 100) return { label: 'Excellent', icon: '✅', color: 'text-green-700' };
+        if (score >= 75) return { label: 'Good', icon: '⚠️', color: 'text-yellow-700' };
+        if (score >= 50) return { label: 'Warning', icon: '⚠️', color: 'text-orange-700' };
+        if (score >= 25) return { label: 'Critical', icon: '🚨', color: 'text-red-700' };
+        return { label: 'Banned', icon: '❌', color: 'text-red-900' };
+    };
+
+    const trustScore = user?.trustScore ?? 100;
+    const trustStatus = getTrustScoreStatus(trustScore);
 
     return (
         <div className="flex min-h-screen bg-gradient-to-br from-gray-50 via-primary-50/30 to-accent-50/20">
@@ -144,6 +162,104 @@ const Profile = () => {
                                 </div>
                             </div>
                         </div>
+                    </div>
+
+                    {/* Trust Score Card */}
+                    <div className="card-gradient mb-8">
+                        <div className="flex items-center justify-between mb-6">
+                            <h2 className="text-2xl font-bold text-gray-900 flex items-center">
+                                <Shield className="h-7 w-7 mr-3 text-primary-600" />
+                                Trust Score
+                            </h2>
+                            <span className={`text-lg font-semibold ${trustStatus.color}`}>
+                                {trustStatus.icon} {trustStatus.label}
+                            </span>
+                        </div>
+
+                        <div className={`bg-gradient-to-r ${getTrustScoreColor(trustScore)} p-8 rounded-2xl text-white text-center mb-6`}>
+                            <p className="text-lg mb-2 opacity-90">Your Trust Score</p>
+                            <p className="text-7xl font-bold mb-2">{trustScore}</p>
+                            <p className="text-sm opacity-75">out of 100</p>
+                        </div>
+
+                        {/* Trust Score Progress Bar */}
+                        <div className="mb-6">
+                            <div className="flex justify-between text-sm text-gray-600 mb-2">
+                                <span>Trust Level</span>
+                                <span>{trustScore}%</span>
+                            </div>
+                            <div className="w-full bg-gray-200 rounded-full h-3">
+                                <div
+                                    className={`h-3 rounded-full bg-gradient-to-r ${getTrustScoreColor(trustScore)} transition-all duration-500`}
+                                    style={{ width: `${trustScore}%` }}
+                                ></div>
+                            </div>
+                        </div>
+
+                        {/* Trust Score Info */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className={`p-4 rounded-xl border-2 ${trustScore === 100 ? 'bg-green-50 border-green-200' :
+                                    trustScore >= 75 ? 'bg-yellow-50 border-yellow-200' :
+                                        trustScore >= 50 ? 'bg-orange-50 border-orange-200' :
+                                            'bg-red-50 border-red-200'
+                                }`}>
+                                <p className="text-sm font-semibold text-gray-700 mb-2">What is Trust Score?</p>
+                                <p className="text-xs text-gray-600">
+                                    Your trust score reflects the quality of your reports. It starts at 100 and decreases if reports are marked as fake by admins.
+                                </p>
+                            </div>
+
+                            <div className={`p-4 rounded-xl border-2 ${trustScore === 100 ? 'bg-green-50 border-green-200' :
+                                    trustScore >= 75 ? 'bg-yellow-50 border-yellow-200' :
+                                        trustScore >= 50 ? 'bg-orange-50 border-orange-200' :
+                                            'bg-red-50 border-red-200'
+                                }`}>
+                                <p className="text-sm font-semibold text-gray-700 mb-2">How to Maintain It?</p>
+                                <p className="text-xs text-gray-600">
+                                    Submit genuine reports with accurate information and real images. Fake reports reduce your score by 25 points.
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* Warning Messages */}
+                        {trustScore < 100 && trustScore > 0 && (
+                            <div className="mt-6 p-4 bg-yellow-50 border-2 border-yellow-200 rounded-xl">
+                                <div className="flex items-start">
+                                    <AlertTriangle className="h-5 w-5 text-yellow-600 mr-3 flex-shrink-0 mt-0.5" />
+                                    <div>
+                                        <p className="text-sm font-semibold text-yellow-900 mb-1">
+                                            {trustScore >= 75 ? 'Warning: One fake report detected' :
+                                                trustScore >= 50 ? 'Serious Warning: Multiple fake reports detected' :
+                                                    'Critical Warning: You are close to being banned'}
+                                        </p>
+                                        <p className="text-xs text-yellow-800">
+                                            {trustScore >= 75 ? 'Please ensure all future reports are genuine. Another fake report will further reduce your trust score.' :
+                                                trustScore >= 50 ? 'Your account is at risk. Submit only verified and genuine reports to avoid being banned.' :
+                                                    'One more fake report will result in a permanent ban. Please be extremely careful with your submissions.'}
+                                        </p>
+                                        <p className="text-xs text-yellow-700 mt-2 font-medium">
+                                            Fake reports remaining before ban: {Math.floor(trustScore / 25)}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {trustScore === 0 && (
+                            <div className="mt-6 p-4 bg-red-50 border-2 border-red-200 rounded-xl">
+                                <div className="flex items-start">
+                                    <AlertTriangle className="h-5 w-5 text-red-600 mr-3 flex-shrink-0 mt-0.5" />
+                                    <div>
+                                        <p className="text-sm font-semibold text-red-900 mb-1">
+                                            Account Banned
+                                        </p>
+                                        <p className="text-xs text-red-800">
+                                            Your account has been permanently banned due to multiple fake reports. You can no longer submit new issues.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
                     </div>
 
                     {/* Impact Score */}

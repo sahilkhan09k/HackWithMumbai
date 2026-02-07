@@ -56,6 +56,19 @@ const issueSchema = new Schema({
         type: Schema.Types.ObjectId,
         ref: 'User',
         required: true
+    },
+    reportedAsFake: {
+        type: Boolean,
+        default: false
+    },
+    reportedAsFakeBy: {
+        type: Schema.Types.ObjectId,
+        ref: 'User',
+        default: null
+    },
+    reportedAsFakeAt: {
+        type: Date,
+        default: null
     }
 }, { timestamps: true });
 

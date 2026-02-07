@@ -1,14 +1,28 @@
 import { useState, useEffect } from 'react';
 import { Filter, MapPin, Loader2 } from 'lucide-react';
+import { GoogleMap, Marker, InfoWindow } from '@react-google-maps/api';
 import Navbar from '../components/Navbar';
+import GoogleMapsWrapper from '../components/GoogleMapsWrapper';
 import { apiService } from '../services/api';
+
+const mapContainerStyle = {
+    width: '100%',
+    height: '600px',
+    borderRadius: '12px'
+};
+
+const defaultCenter = {
+    lat: 19.0760,
+    lng: 72.8777
+};
 
 const CityMap = () => {
     const [issues, setIssues] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-    const [selectedCategory, setSelectedCategory] = useState('all');
     const [selectedPriority, setSelectedPriority] = useState('all');
+    const [selectedIssue, setSelectedIssue] = useState(null);
+    const [mapCenter, setMapCenter] = useState(defaultCenter);
 
     const priorities = ['all', 'High', 'Medium', 'Low'];
 
@@ -21,6 +35,14 @@ const CityMap = () => {
             setLoading(true);
             const response = await apiService.getAllIssues();
             setIssues(response.data);
+
+            // Center map on first issue if available
+            if (response.data.length > 0 && response.data[0].location) {
+                setMapCenter({
+                    lat: response.data[0].location.lat,
+                    lng: response.data[0].location.lng
+                });
+            }
         } catch (err) {
             setError(err.message || 'Failed to fetch issues');
         } finally {
@@ -30,16 +52,27 @@ const CityMap = () => {
 
     const filteredIssues = issues.filter(issue => {
         const priorityMatch = selectedPriority === 'all' || issue.priority === selectedPriority;
-        return priorityMatch;
+        return priorityMatch && issue.location?.lat && issue.location?.lng;
     });
 
     const getPriorityColor = (priority) => {
         switch (priority) {
-            case 'High': return 'bg-red-500';
-            case 'Medium': return 'bg-yellow-500';
-            case 'Low': return 'bg-green-500';
-            default: return 'bg-gray-500';
+            case 'High': return '#ef4444'; // Red
+            case 'Medium': return '#f59e0b'; // Yellow
+            case 'Low': return '#10b981'; // Green
+            default: return '#6b7280'; // Gray
         }
+    };
+
+    const getMarkerIcon = (priority) => {
+        return {
+            path: window.google?.maps?.SymbolPath?.CIRCLE || 0,
+            fillColor: getPriorityColor(priority),
+            fillOpacity: 0.8,
+            strokeColor: '#ffffff',
+            strokeWeight: 2,
+            scale: 10,
+        };
     };
 
     if (loading) {
@@ -91,7 +124,9 @@ const CityMap = () => {
                                 className="input-field"
                             >
                                 {priorities.map(pri => (
-                                    <option key={pri} value={pri}>{pri.charAt(0).toUpperCase() + pri.slice(1)}</option>
+                                    <option key={pri} value={pri}>
+                                        {pri.charAt(0).toUpperCase() + pri.slice(1)}
+                                    </option>
                                 ))}
                             </select>
                         </div>
@@ -105,77 +140,81 @@ const CityMap = () => {
                     </div>
                 </div>
 
-                {/* Map Placeholder */}
+                {/* Google Map */}
                 <div className="card mb-6">
-                    <div className="bg-gray-200 rounded-lg h-96 flex items-center justify-center relative overflow-hidden">
-                        <div className="text-center">
-                            <MapPin className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-                            <p className="text-gray-600">Interactive Map View</p>
-                            <p className="text-sm text-gray-500">Integrate with Google Maps or Mapbox</p>
-                        </div>
-
-                        {/* Mock markers */}
-                        {filteredIssues.slice(0, 10).map((issue, idx) => (
-                            <div
-                                key={issue._id}
-                                className={`absolute ${getPriorityColor(issue.priority)} w-4 h-4 rounded-full border-2 border-white shadow-lg`}
-                                style={{
-                                    left: `${20 + idx * 8}%`,
-                                    top: `${30 + (idx % 3) * 20}%`
-                                }}
-                                title={issue.title}
-                            />
-                        ))}
-                    </div>
-                </div>
-
-                {/* Issue List */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {filteredIssues.map(issue => (
-                        <div key={issue._id} className="card hover:shadow-lg transition-shadow cursor-pointer">
-                            {issue.imageUrl && (
-                                <img
-                                    src={issue.imageUrl}
-                                    alt={issue.title}
-                                    className="rounded-lg h-40 w-full object-cover mb-3"
+                    <GoogleMapsWrapper>
+                        <GoogleMap
+                            mapContainerStyle={mapContainerStyle}
+                            center={mapCenter}
+                            zoom={12}
+                            options={{
+                                zoomControl: true,
+                                streetViewControl: false,
+                                mapTypeControl: false,
+                                fullscreenControl: true,
+                            }}
+                        >
+                            {filteredIssues.map(issue => (
+                                <Marker
+                                    key={issue._id}
+                                    position={{
+                                        lat: issue.location.lat,
+                                        lng: issue.location.lng
+                                    }}
+                                    icon={getMarkerIcon(issue.priority)}
+                                    onClick={() => setSelectedIssue(issue)}
                                 />
-                            )}
-                            <div className="flex items-start justify-between mb-3">
-                                <h3 className="font-semibold text-lg">{issue.title}</h3>
-                                <span className={`${getPriorityColor(issue.priority)} text-white text-xs px-2 py-1 rounded`}>
-                                    {issue.priority}
-                                </span>
-                            </div>
-                            <p className="text-sm text-gray-600 mb-2">Status: {issue.status}</p>
-                            <p className="text-sm text-gray-600 mb-2">Score: {issue.priorityScore}</p>
-                            <p className="text-sm text-gray-500">Location: {issue.location?.lat?.toFixed(4)}, {issue.location?.lng?.toFixed(4)}</p>
-                        </div>
-                    ))}
-                </div>
+                            ))}
 
-                {filteredIssues.length === 0 && (
-                    <div className="card text-center py-12">
-                        <MapPin className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-                        <p className="text-gray-600 text-lg">No issues found</p>
-                        <p className="text-sm text-gray-500 mt-2">Try adjusting your filters</p>
-                    </div>
-                )}
+                            {selectedIssue && (
+                                <InfoWindow
+                                    position={{
+                                        lat: selectedIssue.location.lat,
+                                        lng: selectedIssue.location.lng
+                                    }}
+                                    onCloseClick={() => setSelectedIssue(null)}
+                                >
+                                    <div className="p-2 max-w-xs">
+                                        <h3 className="font-bold text-lg mb-2">{selectedIssue.title}</h3>
+                                        {selectedIssue.imageUrl && (
+                                            <img
+                                                src={selectedIssue.imageUrl}
+                                                alt={selectedIssue.title}
+                                                className="w-full h-32 object-cover rounded mb-2"
+                                            />
+                                        )}
+                                        <p className="text-sm text-gray-600 mb-2">{selectedIssue.description}</p>
+                                        <div className="flex items-center justify-between text-xs">
+                                            <span className={`px-2 py-1 rounded ${selectedIssue.priority === 'High' ? 'bg-red-100 text-red-700' :
+                                                    selectedIssue.priority === 'Medium' ? 'bg-yellow-100 text-yellow-700' :
+                                                        'bg-green-100 text-green-700'
+                                                }`}>
+                                                {selectedIssue.priority}
+                                            </span>
+                                            <span className="text-gray-600">{selectedIssue.status}</span>
+                                        </div>
+                                    </div>
+                                </InfoWindow>
+                            )}
+                        </GoogleMap>
+                    </GoogleMapsWrapper>
+                </div>
 
                 {/* Legend */}
-                <div className="card mt-6">
+                <div className="card">
                     <h3 className="font-semibold mb-3">Priority Legend</h3>
                     <div className="flex flex-wrap gap-4">
                         <div className="flex items-center">
                             <div className="w-4 h-4 bg-red-500 rounded-full mr-2"></div>
-                            <span className="text-sm">High Priority</span>
+                            <span className="text-sm">High Priority ({issues.filter(i => i.priority === 'High').length})</span>
                         </div>
                         <div className="flex items-center">
                             <div className="w-4 h-4 bg-yellow-500 rounded-full mr-2"></div>
-                            <span className="text-sm">Medium Priority</span>
+                            <span className="text-sm">Medium Priority ({issues.filter(i => i.priority === 'Medium').length})</span>
                         </div>
                         <div className="flex items-center">
                             <div className="w-4 h-4 bg-green-500 rounded-full mr-2"></div>
-                            <span className="text-sm">Low Priority</span>
+                            <span className="text-sm">Low Priority ({issues.filter(i => i.priority === 'Low').length})</span>
                         </div>
                     </div>
                 </div>

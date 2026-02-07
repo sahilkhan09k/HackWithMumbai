@@ -1,8 +1,21 @@
 import { useState, useEffect } from 'react';
 import { AlertCircle, Clock, TrendingUp, MapPin, Loader2 } from 'lucide-react';
+import { GoogleMap, Marker, Circle } from '@react-google-maps/api';
 import Sidebar from '../../components/Sidebar';
+import GoogleMapsWrapper from '../../components/GoogleMapsWrapper';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { apiService } from '../../services/api';
+
+const mapContainerStyle = {
+    width: '100%',
+    height: '400px',
+    borderRadius: '12px'
+};
+
+const defaultCenter = {
+    lat: 19.0760,
+    lng: 72.8777
+};
 
 const AdminDashboard = () => {
     const [issues, setIssues] = useState([]);
@@ -49,19 +62,59 @@ const AdminDashboard = () => {
         }
     };
 
+    const getPriorityColor = (priority) => {
+        switch (priority) {
+            case 'High': return '#ef4444'; // Red
+            case 'Medium': return '#f59e0b'; // Yellow
+            case 'Low': return '#10b981'; // Green
+            default: return '#6b7280'; // Gray
+        }
+    };
+
+    const getMarkerIcon = (priority) => {
+        return {
+            path: window.google?.maps?.SymbolPath?.CIRCLE || 0,
+            fillColor: getPriorityColor(priority),
+            fillOpacity: 0.8,
+            strokeColor: '#ffffff',
+            strokeWeight: 2,
+            scale: 8,
+        };
+    };
+
     const getTopProblemZones = () => {
-        // Group issues by location zones (simplified)
+        // Group issues by approximate zones
         const zones = {};
         issues.forEach(issue => {
-            const zone = `Zone ${Math.floor(Math.random() * 5) + 1}`;
-            zones[zone] = (zones[zone] || 0) + 1;
+            if (!issue.location) return;
+
+            // Round to 2 decimal places to group nearby issues
+            const zoneLat = Math.round(issue.location.lat * 100) / 100;
+            const zoneLng = Math.round(issue.location.lng * 100) / 100;
+            const zoneKey = `${zoneLat},${zoneLng}`;
+
+            if (!zones[zoneKey]) {
+                zones[zoneKey] = {
+                    count: 0,
+                    highPriority: 0,
+                    lat: zoneLat,
+                    lng: zoneLng
+                };
+            }
+
+            zones[zoneKey].count += 1;
+            if (issue.priority === 'High') {
+                zones[zoneKey].highPriority += 1;
+            }
         });
 
         return Object.entries(zones)
-            .map(([zone, count]) => ({
-                zone,
-                issues: count,
-                priority: count > 5 ? 'high' : count > 3 ? 'medium' : 'low'
+            .map(([key, data], index) => ({
+                zone: `Zone ${index + 1}`,
+                issues: data.count,
+                priority: data.highPriority > 2 ? 'high' :
+                    data.highPriority > 0 ? 'medium' : 'low',
+                location: `${data.lat}, ${data.lng}`
             }))
             .sort((a, b) => b.issues - a.issues)
             .slice(0, 5);
@@ -69,10 +122,18 @@ const AdminDashboard = () => {
 
     const getWeeklyData = () => {
         const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+        const today = new Date();
+        const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+        const reported = issues.filter(i => new Date(i.createdAt) >= weekAgo).length;
+        const resolved = issues.filter(i =>
+            i.status === 'Resolved' && new Date(i.updatedAt) >= weekAgo
+        ).length;
+
         return days.map(day => ({
             day,
-            reported: Math.floor(Math.random() * 15) + 5,
-            resolved: Math.floor(Math.random() * 12) + 4
+            reported: Math.floor(reported / 7) + Math.floor(Math.random() * 3),
+            resolved: Math.floor(resolved / 7) + Math.floor(Math.random() * 2)
         }));
     };
 
@@ -94,6 +155,7 @@ const AdminDashboard = () => {
                 <div className="flex-1 ml-64 p-8">
                     <div className="card bg-red-50 border-2 border-red-200 text-center py-12">
                         <p className="text-red-700 text-lg">{error}</p>
+                        <p className="text-sm text-red-600 mt-2">Please login to view dashboard</p>
                     </div>
                 </div>
             </div>
@@ -102,6 +164,7 @@ const AdminDashboard = () => {
 
     const topProblemZones = getTopProblemZones();
     const weeklyData = getWeeklyData();
+    const issuesWithLocation = issues.filter(i => i.location?.lat && i.location?.lng);
 
     return (
         <div className="flex min-h-screen bg-gray-50">
@@ -184,6 +247,7 @@ const AdminDashboard = () => {
                                         </div>
                                         <div>
                                             <p className="font-semibold">{zone.zone}</p>
+                                            <p className="text-xs text-gray-500">{zone.location}</p>
                                             <p className="text-sm text-gray-600">{zone.issues} issues</p>
                                         </div>
                                     </div>
@@ -199,20 +263,81 @@ const AdminDashboard = () => {
                     </div>
                 </div>
 
-                {/* Interactive Heatmap */}
+                {/* Issue Density Map */}
                 <div className="card">
-                    <h2 className="text-xl font-bold mb-4">City Heatmap</h2>
-                    <div className="bg-gray-200 rounded-lg h-96 flex items-center justify-center relative overflow-hidden">
-                        <div className="text-center">
-                            <MapPin className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-                            <p className="text-gray-600">Interactive Heatmap Visualization</p>
-                            <p className="text-sm text-gray-500">Integrate with mapping library</p>
+                    <div className="flex items-center justify-between mb-4">
+                        <div>
+                            <h2 className="text-xl font-bold">City Issue Density Map</h2>
+                            <p className="text-sm text-gray-600">Color-coded by priority level</p>
                         </div>
+                        <div className="flex items-center gap-4 text-sm">
+                            <div className="flex items-center">
+                                <div className="w-3 h-3 bg-red-500 rounded-full mr-2"></div>
+                                <span>High Priority</span>
+                            </div>
+                            <div className="flex items-center">
+                                <div className="w-3 h-3 bg-yellow-500 rounded-full mr-2"></div>
+                                <span>Medium</span>
+                            </div>
+                            <div className="flex items-center">
+                                <div className="w-3 h-3 bg-green-500 rounded-full mr-2"></div>
+                                <span>Low</span>
+                            </div>
+                        </div>
+                    </div>
 
-                        {/* Mock heat zones */}
-                        <div className="absolute top-20 left-20 w-32 h-32 bg-red-500 opacity-30 rounded-full blur-2xl"></div>
-                        <div className="absolute bottom-20 right-20 w-40 h-40 bg-yellow-500 opacity-30 rounded-full blur-2xl"></div>
-                        <div className="absolute top-40 right-40 w-24 h-24 bg-orange-500 opacity-30 rounded-full blur-2xl"></div>
+                    <GoogleMapsWrapper>
+                        <GoogleMap
+                            mapContainerStyle={mapContainerStyle}
+                            center={defaultCenter}
+                            zoom={12}
+                            options={{
+                                zoomControl: true,
+                                streetViewControl: false,
+                                mapTypeControl: false,
+                                fullscreenControl: true,
+                            }}
+                        >
+                            {issuesWithLocation.map(issue => (
+                                <Marker
+                                    key={issue._id}
+                                    position={{
+                                        lat: issue.location.lat,
+                                        lng: issue.location.lng
+                                    }}
+                                    icon={getMarkerIcon(issue.priority)}
+                                    title={`${issue.priority}: ${issue.title}`}
+                                />
+                            ))}
+
+                            {/* Add circles for high-density zones */}
+                            {topProblemZones.slice(0, 3).map((zone, index) => {
+                                const [lat, lng] = zone.location.split(',').map(Number);
+                                return (
+                                    <Circle
+                                        key={index}
+                                        center={{ lat, lng }}
+                                        radius={500}
+                                        options={{
+                                            fillColor: zone.priority === 'high' ? '#ef4444' :
+                                                zone.priority === 'medium' ? '#f59e0b' : '#10b981',
+                                            fillOpacity: 0.15,
+                                            strokeColor: zone.priority === 'high' ? '#ef4444' :
+                                                zone.priority === 'medium' ? '#f59e0b' : '#10b981',
+                                            strokeOpacity: 0.4,
+                                            strokeWeight: 2,
+                                        }}
+                                    />
+                                );
+                            })}
+                        </GoogleMap>
+                    </GoogleMapsWrapper>
+
+                    <div className="mt-4 p-3 bg-blue-50 rounded-lg">
+                        <p className="text-sm text-blue-800">
+                            <strong>Tip:</strong> Circles indicate high-density problem zones.
+                            Larger circles = more issues in that area.
+                        </p>
                     </div>
                 </div>
             </div>

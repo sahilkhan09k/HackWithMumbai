@@ -32,8 +32,14 @@ const Login = () => {
             }
         } catch (err) {
             console.error('Login error:', err);
-            if (err.message.includes('Invalid credentials') || err.message.includes('401')) {
-                setError('Invalid email or password. Please check your credentials or register a new account.');
+
+            // Handle specific error cases
+            if (err.message.includes('permanently banned')) {
+                setError('Your account has been permanently banned due to multiple fake reports. You cannot access the platform.');
+            } else if (err.message.includes('Invalid credentials') || err.message.includes('401')) {
+                setError('Invalid email or password. Please check your credentials.');
+            } else if (err.message.includes('403')) {
+                setError('Access denied. Your account may have been banned.');
             } else {
                 setError(err.message || 'Login failed. Please try again.');
             }

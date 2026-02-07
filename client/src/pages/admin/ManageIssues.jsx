@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Search, Edit, CheckCircle, Upload, Loader2 } from 'lucide-react';
+import { Search, Edit, CheckCircle, Upload, Loader2, AlertTriangle, Shield } from 'lucide-react';
 import Sidebar from '../../components/Sidebar';
 import { apiService } from '../../services/api';
 
@@ -12,6 +12,7 @@ const ManageIssues = () => {
     const [showModal, setShowModal] = useState(false);
     const [newStatus, setNewStatus] = useState('');
     const [updating, setUpdating] = useState(false);
+    const [reportingFake, setReportingFake] = useState(false);
 
     useEffect(() => {
         fetchIssues();
@@ -55,6 +56,43 @@ const ManageIssues = () => {
             alert(err.message || 'Failed to update issue');
         } finally {
             setUpdating(false);
+        }
+    };
+
+    const handleReportAsFake = async (issue) => {
+        if (issue.reportedAsFake) {
+            alert('This issue has already been reported as fake');
+            return;
+        }
+
+        const confirmed = window.confirm(
+            `Are you sure you want to report this issue as FAKE?\n\n` +
+            `This will:\n` +
+            `• Reduce the user's trust score by 25 points\n` +
+            `• Ban the user if trust score reaches 0\n\n` +
+            `User: ${issue.reportedBy?.name || 'Unknown'}\n` +
+            `Email: ${issue.reportedBy?.email || 'Unknown'}`
+        );
+
+        if (!confirmed) return;
+
+        try {
+            setReportingFake(true);
+            const response = await apiService.reportIssueAsFake(issue._id);
+
+            // Update local state
+            setIssues(issues.map(i =>
+                i._id === issue._id
+                    ? { ...i, reportedAsFake: true }
+                    : i
+            ));
+
+            alert(response.message || 'Issue reported as fake successfully');
+            fetchIssues(); // Refresh to get updated data
+        } catch (err) {
+            alert(err.message || 'Failed to report issue as fake');
+        } finally {
+            setReportingFake(false);
         }
     };
 
@@ -128,6 +166,7 @@ const ManageIssues = () => {
                                 <tr>
                                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
                                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Title</th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Reporter</th>
                                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Priority</th>
                                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Score</th>
                                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
@@ -137,15 +176,28 @@ const ManageIssues = () => {
                             </thead>
                             <tbody className="bg-white divide-y divide-gray-200">
                                 {filteredIssues.map(issue => (
-                                    <tr key={issue._id} className="hover:bg-gray-50">
+                                    <tr key={issue._id} className={`hover:bg-gray-50 ${issue.reportedAsFake ? 'bg-red-50' : ''}`}>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                                             #{issue._id.slice(-6)}
                                         </td>
-                                        <td className="px-6 py-4 text-sm text-gray-900">{issue.title}</td>
+                                        <td className="px-6 py-4 text-sm text-gray-900">
+                                            {issue.title}
+                                            {issue.reportedAsFake && (
+                                                <span className="ml-2 text-xs px-2 py-1 bg-red-100 text-red-700 rounded">
+                                                    FAKE
+                                                </span>
+                                            )}
+                                        </td>
+                                        <td className="px-6 py-4 text-sm text-gray-600">
+                                            <div>
+                                                <div className="font-medium">{issue.reportedBy?.name || 'Unknown'}</div>
+                                                <div className="text-xs text-gray-500">{issue.reportedBy?.email || 'N/A'}</div>
+                                            </div>
+                                        </td>
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             <span className={`text-xs px-2 py-1 rounded ${issue.priority === 'High' ? 'bg-red-100 text-red-700' :
-                                                    issue.priority === 'Medium' ? 'bg-yellow-100 text-yellow-700' :
-                                                        'bg-green-100 text-green-700'
+                                                issue.priority === 'Medium' ? 'bg-yellow-100 text-yellow-700' :
+                                                    'bg-green-100 text-green-700'
                                                 }`}>
                                                 {issue.priority}
                                             </span>
@@ -161,7 +213,7 @@ const ManageIssues = () => {
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                                             {new Date(issue.createdAt).toLocaleDateString()}
                                         </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm">
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm space-y-2">
                                             <button
                                                 onClick={() => handleUpdateIssue(issue)}
                                                 className="text-primary-600 hover:text-primary-700 font-medium flex items-center"
@@ -169,6 +221,16 @@ const ManageIssues = () => {
                                                 <Edit className="h-4 w-4 mr-1" />
                                                 Update
                                             </button>
+                                            {!issue.reportedAsFake && (
+                                                <button
+                                                    onClick={() => handleReportAsFake(issue)}
+                                                    disabled={reportingFake}
+                                                    className="text-red-600 hover:text-red-700 font-medium flex items-center disabled:opacity-50"
+                                                >
+                                                    <AlertTriangle className="h-4 w-4 mr-1" />
+                                                    Report Fake
+                                                </button>
+                                            )}
                                         </td>
                                     </tr>
                                 ))}
@@ -212,8 +274,8 @@ const ManageIssues = () => {
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-2">Current Priority</label>
                                     <span className={`text-xs px-3 py-1 rounded-full ${selectedIssue.priority === 'High' ? 'bg-red-100 text-red-700' :
-                                            selectedIssue.priority === 'Medium' ? 'bg-yellow-100 text-yellow-700' :
-                                                'bg-green-100 text-green-700'
+                                        selectedIssue.priority === 'Medium' ? 'bg-yellow-100 text-yellow-700' :
+                                            'bg-green-100 text-green-700'
                                         }`}>
                                         {selectedIssue.priority} (Score: {selectedIssue.priorityScore})
                                     </span>
