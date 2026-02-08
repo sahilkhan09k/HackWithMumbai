@@ -32,6 +32,22 @@ app.use("/api/v1/auth", authRoutes);
 app.use("/api/v1/user", userRoutes);
 app.use("/api/v1/issue", issueRoutes);
 
+// Global error handler - suppress expected 401 errors from logs
+app.use((err, req, res, next) => {
+    const statusCode = err.statusCode || 500;
+
+    // Only log unexpected errors (not 401 unauthorized)
+    if (statusCode !== 401) {
+        console.error('Error:', err.message);
+        console.error(err.stack);
+    }
+
+    res.status(statusCode).json({
+        success: false,
+        message: err.message || 'Internal Server Error',
+        statusCode: statusCode
+    });
+});
 
 
 export { app };
