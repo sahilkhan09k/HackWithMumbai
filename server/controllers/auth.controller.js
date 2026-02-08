@@ -39,11 +39,27 @@ export const registerUser = asyncHandler(async (req, res) => {
 
   const user = await User.create({ name, email, password });
 
+  const { accessToken, refreshToken } = await generateAccessAndRefreshToken(user._id);
+
   const safeUser = await User.findById(user._id).select("-password -refreshToken");
+
+  const cookieOptions = {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "none"
+  };
 
   return res
     .status(201)
-    .json(new apiResponse(201, safeUser, "User registered successfully"));
+    .cookie("accessToken", accessToken, {
+      ...cookieOptions,
+      maxAge: 45 * 60 * 1000
+    })
+    .cookie("refreshToken", refreshToken, {
+      ...cookieOptions,
+      maxAge: 7 * 24 * 60 * 60 * 1000
+    })
+    .json(new apiResponse(201, { ...safeUser.toObject(), accessToken, refreshToken }, "User registered successfully"));
 });
 
 
@@ -72,7 +88,7 @@ export const loginUser = asyncHandler(async (req, res) => {
   const cookieOptions = {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
-    sameSite: "lax"
+    sameSite: "none"
   };
 
   const safeUser = await User.findById(user._id).select("-password -refreshToken");
@@ -87,7 +103,7 @@ export const loginUser = asyncHandler(async (req, res) => {
       ...cookieOptions,
       maxAge: 7 * 24 * 60 * 60 * 1000
     })
-    .json(new apiResponse(200, safeUser, "Login successful"));
+    .json(new apiResponse(200, { ...safeUser.toObject(), accessToken, refreshToken }, "Login successful"));
 });
 
 

@@ -7,10 +7,16 @@ class ApiService {
 
     async request(endpoint, options = {}) {
         const url = `${this.baseURL}${endpoint}`;
+
+        // Get token from localStorage
+        const user = localStorage.getItem('user');
+        const token = user ? JSON.parse(user).accessToken : null;
+
         const config = {
             ...options,
             headers: {
                 'Content-Type': 'application/json',
+                ...(token && { 'Authorization': `Bearer ${token}` }),
                 ...options.headers,
             },
             credentials: 'include',
@@ -44,10 +50,17 @@ class ApiService {
     async uploadRequest(endpoint, formData) {
         const url = `${this.baseURL}${endpoint}`;
 
+        // Get token from localStorage
+        const user = localStorage.getItem('user');
+        const token = user ? JSON.parse(user).accessToken : null;
+
         try {
             const response = await fetch(url, {
                 method: 'POST',
                 body: formData,
+                headers: {
+                    ...(token && { 'Authorization': `Bearer ${token}` }),
+                },
                 credentials: 'include',
             });
 
