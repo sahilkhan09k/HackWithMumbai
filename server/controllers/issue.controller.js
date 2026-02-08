@@ -10,7 +10,7 @@ import { uploadOnCloudinary } from "../utils/cloudinary.js";
 
 const getPriorityLabel = (score) => {
     if (score >= 70) return "High";
-    if (score >= 40) return "Medium";
+    if (score >= 45) return "Medium";
     return "Low";
 };
 
@@ -20,11 +20,13 @@ const calculateBaseScore = ({
     locationImpact,
     timePending
 }) => {
+    // Increased severity weight to 50% to ensure dangerous issues get HIGH priority
+    // Severity is the most critical factor for priority calculation
     return Math.round(
-        severity * 0.35 +
-        frequency * 0.20 +
-        locationImpact * 0.25 +
-        timePending * 0.20
+        severity * 0.50 +        // 50% - Primary factor
+        locationImpact * 0.30 +  // 30% - High-impact locations
+        frequency * 0.10 +       // 10% - Issue frequency
+        timePending * 0.10       // 10% - Time pending
     );
 };
 

@@ -90,10 +90,10 @@ const ReportIssue = () => {
             console.error('Submit error:', err);
             const errorMessage = err.message || 'Failed to submit issue. Please try again.';
 
-            // Handle specific error types
-            // Check for 429 status code (rate limiting)
+            // Handle specific error types based on status code and message
+
+            // 429 - Rate Limiting (Cooldown or Daily Limit)
             if (err.status === 429 || errorMessage.includes('429') || errorMessage.includes('Too Many Requests')) {
-                // Check if it's cooldown or daily limit
                 if (errorMessage.includes('wait') && errorMessage.includes('minutes')) {
                     setErrorType('cooldown');
                     setError(errorMessage);
@@ -101,14 +101,26 @@ const ReportIssue = () => {
                     setErrorType('limit');
                     setError(errorMessage);
                 } else {
-                    // Default cooldown message for 429 errors
                     setErrorType('cooldown');
                     setError('You can submit only one issue per 30 minutes. Please wait before submitting another report.');
                 }
-            } else if (errorMessage.includes('Multiple issues already reported at this location')) {
+            }
+            // 409 - Conflict (Location Duplication)
+            else if (err.status === 409 || errorMessage.includes('409') || errorMessage.includes('Conflict')) {
+                setErrorType('location');
+                if (errorMessage.includes('Multiple issues already reported')) {
+                    setError(errorMessage);
+                } else {
+                    setError('Multiple issues have already been reported at this location. Please check existing reports or choose a different location.');
+                }
+            }
+            // Location duplicate (by message content)
+            else if (errorMessage.includes('Multiple issues already reported at this location')) {
                 setErrorType('location');
                 setError(errorMessage);
-            } else {
+            }
+            // General errors
+            else {
                 setErrorType('general');
                 setError(errorMessage);
             }
