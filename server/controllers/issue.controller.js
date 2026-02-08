@@ -356,3 +356,23 @@ export const reportIssueAsFake = asyncHandler(async (req, res) => {
             }
         }, `Issue reported as fake. User's trust score reduced to ${reportingUser.trustScore}`));
 });
+
+
+export const getHomeStats = asyncHandler(async (req, res) => {
+    const [totalIssues, resolvedIssues, activeZones] = await Promise.all([
+        Issue.countDocuments(),
+        Issue.countDocuments({ status: "Resolved" }),
+        Issue.distinct("location.coordinates").then(coords => {
+            // Count unique locations (approximate active zones)
+            return Math.ceil(coords.length / 10) || 1;
+        })
+    ]);
+
+    return res
+        .status(200)
+        .json(new apiResponse(200, {
+            reported: totalIssues,
+            resolved: resolvedIssues,
+            activeZones: activeZones
+        }, "Homepage statistics fetched successfully"));
+});

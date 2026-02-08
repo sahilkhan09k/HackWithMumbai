@@ -8,7 +8,8 @@ import {
     updateIssueStatus,
     getAdminIssueStats,
     getIssuesByPriority,
-    reportIssueAsFake
+    reportIssueAsFake,
+    getHomeStats
 } from "../controllers/issue.controller.js";
 import { upload } from "../middlewares/multer.middleware.js";
 
@@ -22,6 +23,8 @@ router.post(
 );
 
 router.get("/getAllIssue", getAllIssues); // Public - no auth required for transparency
+
+router.get("/homeStats", getHomeStats); // Public - for homepage statistics
 
 router.get("/getIssue/:issueId", verifyJWT, getIssueById);
 

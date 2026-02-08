@@ -6,19 +6,33 @@ import Footer from '../components/Footer';
 
 const Home = () => {
     const [stats, setStats] = useState({
-        reported: 1247,
-        resolved: 892,
-        activeZones: 34
+        reported: 0,
+        resolved: 0,
+        activeZones: 0
     });
 
     useEffect(() => {
-        const interval = setInterval(() => {
-            setStats(prev => ({
-                reported: prev.reported + Math.floor(Math.random() * 3),
-                resolved: prev.resolved + Math.floor(Math.random() * 2),
-                activeZones: prev.activeZones + Math.floor(Math.random() * 2) - 1
-            }));
-        }, 5000);
+        const fetchStats = async () => {
+            try {
+                const response = await fetch(`${import.meta.env.VITE_API_URL}/api/v1/issue/homeStats`);
+                const data = await response.json();
+                if (data.success) {
+                    setStats(data.data);
+                }
+            } catch (error) {
+                console.error('Error fetching stats:', error);
+                // Fallback to default values if API fails
+                setStats({
+                    reported: 1247,
+                    resolved: 892,
+                    activeZones: 34
+                });
+            }
+        };
+
+        fetchStats();
+        // Refresh stats every 30 seconds
+        const interval = setInterval(fetchStats, 30000);
         return () => clearInterval(interval);
     }, []);
 
