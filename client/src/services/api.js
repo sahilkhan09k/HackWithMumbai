@@ -8,7 +8,6 @@ class ApiService {
     async request(endpoint, options = {}) {
         const url = `${this.baseURL}${endpoint}`;
 
-        // Get token from localStorage
         const user = localStorage.getItem('user');
         const token = user ? JSON.parse(user).accessToken : null;
 
@@ -33,7 +32,6 @@ class ApiService {
             const data = await response.json();
 
             if (!response.ok) {
-                // Create error with status code for better handling
                 const error = new Error(data.message || `HTTP error! status: ${response.status}`);
                 error.status = response.status;
                 error.data = data;
@@ -50,7 +48,6 @@ class ApiService {
     async uploadRequest(endpoint, formData) {
         const url = `${this.baseURL}${endpoint}`;
 
-        // Get token from localStorage
         const user = localStorage.getItem('user');
         const token = user ? JSON.parse(user).accessToken : null;
 
@@ -72,7 +69,6 @@ class ApiService {
             const data = await response.json();
 
             if (!response.ok) {
-                // Create error with status code for better handling
                 const error = new Error(data.message || `HTTP error! status: ${response.status}`);
                 error.status = response.status;
                 error.data = data;
@@ -86,7 +82,6 @@ class ApiService {
         }
     }
 
-    // Auth endpoints
     async register(userData) {
         return this.request('/auth/register', {
             method: 'POST',
@@ -113,7 +108,6 @@ class ApiService {
         });
     }
 
-    // User endpoints
     async getCurrentUser() {
         return this.request('/user/profile');
     }
@@ -129,7 +123,6 @@ class ApiService {
         });
     }
 
-    // Issue endpoints
     async createIssue(formData) {
         return this.uploadRequest('/issue/postIssue', formData);
     }
