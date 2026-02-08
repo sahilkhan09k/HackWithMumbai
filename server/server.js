@@ -1,4 +1,11 @@
 import dotenv from 'dotenv';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+// Get __dirname equivalent in ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Load environment variables FIRST before any other imports
 dotenv.config({
@@ -7,6 +14,13 @@ dotenv.config({
 
 import { app } from "./app.js";
 import { connectDB } from "./db/index.js";
+
+// Ensure public/temp directory exists
+const tempDir = path.join(__dirname, 'public', 'temp');
+if (!fs.existsSync(tempDir)) {
+    fs.mkdirSync(tempDir, { recursive: true });
+    console.log('Created public/temp directory');
+}
 
 connectDB().then(() => {
     const port = process.env.PORT || 5000;
