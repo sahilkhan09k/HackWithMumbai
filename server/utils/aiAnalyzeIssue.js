@@ -4,9 +4,12 @@ let groqClient = null;
 
 const getGroqClient = () => {
     if (!groqClient && process.env.GROQ_API_KEY) {
+        console.log("🔑 Groq API key detected, initializing client...");
         groqClient = new Groq({
             apiKey: process.env.GROQ_API_KEY
         });
+    } else if (!process.env.GROQ_API_KEY) {
+        console.log("❌ GROQ_API_KEY environment variable not found");
     }
     return groqClient;
 };
