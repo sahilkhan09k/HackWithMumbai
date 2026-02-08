@@ -43,7 +43,6 @@ const ManageIssues = () => {
             setUpdating(true);
             await apiService.updateIssueStatus(selectedIssue._id, newStatus);
 
-            // Update local state
             setIssues(issues.map(issue =>
                 issue._id === selectedIssue._id
                     ? { ...issue, status: newStatus }
@@ -80,7 +79,6 @@ const ManageIssues = () => {
             setReportingFake(true);
             const response = await apiService.reportIssueAsFake(issue._id);
 
-            // Update local state
             setIssues(issues.map(i =>
                 i._id === issue._id
                     ? { ...i, reportedAsFake: true }
@@ -88,7 +86,7 @@ const ManageIssues = () => {
             ));
 
             alert(response.message || 'Issue reported as fake successfully');
-            fetchIssues(); // Refresh to get updated data
+            fetchIssues();
         } catch (err) {
             alert(err.message || 'Failed to report issue as fake');
         } finally {

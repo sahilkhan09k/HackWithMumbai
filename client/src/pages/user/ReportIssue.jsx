@@ -14,7 +14,7 @@ const ReportIssue = () => {
     });
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
-    const [errorType, setErrorType] = useState(''); // 'cooldown', 'limit', 'location', 'general'
+    const [errorType, setErrorType] = useState('');
     const [submitted, setSubmitted] = useState(false);
     const navigate = useNavigate();
 
@@ -25,7 +25,7 @@ const ReportIssue = () => {
     const handleImageUpload = (e) => {
         const file = e.target.files[0];
         if (file) {
-            // Validate file size (max 10MB)
+
             if (file.size > 10 * 1024 * 1024) {
                 setError('Image size should be less than 10MB');
                 return;
@@ -64,12 +64,11 @@ const ReportIssue = () => {
         setLoading(true);
 
         try {
-            // Validate required fields
+
             if (!formData.title || !formData.description || !formData.image || !formData.lat || !formData.lng) {
                 throw new Error('All fields are required');
             }
 
-            // Create FormData for file upload
             const submitData = new FormData();
             submitData.append('title', formData.title);
             submitData.append('description', formData.description);
@@ -77,7 +76,6 @@ const ReportIssue = () => {
             submitData.append('lat', formData.lat);
             submitData.append('lng', formData.lng);
 
-            // Submit to API
             const response = await apiService.createIssue(submitData);
 
             console.log('Issue created:', response);
@@ -90,9 +88,7 @@ const ReportIssue = () => {
             console.error('Submit error:', err);
             const errorMessage = err.message || 'Failed to submit issue. Please try again.';
 
-            // Handle specific error types based on status code and message
 
-            // 429 - Rate Limiting (Cooldown or Daily Limit)
             if (err.status === 429 || errorMessage.includes('429') || errorMessage.includes('Too Many Requests')) {
                 if (errorMessage.includes('wait') && errorMessage.includes('minutes')) {
                     setErrorType('cooldown');
@@ -105,7 +101,7 @@ const ReportIssue = () => {
                     setError('You can submit only one issue per 30 minutes. Please wait before submitting another report.');
                 }
             }
-            // 409 - Conflict (Location Duplication)
+
             else if (err.status === 409 || errorMessage.includes('409') || errorMessage.includes('Conflict')) {
                 setErrorType('location');
                 if (errorMessage.includes('Multiple issues already reported')) {
@@ -114,12 +110,12 @@ const ReportIssue = () => {
                     setError('Multiple issues have already been reported at this location. Please check existing reports or choose a different location.');
                 }
             }
-            // Location duplicate (by message content)
+
             else if (errorMessage.includes('Multiple issues already reported at this location')) {
                 setErrorType('location');
                 setError(errorMessage);
             }
-            // General errors
+
             else {
                 setErrorType('general');
                 setError(errorMessage);

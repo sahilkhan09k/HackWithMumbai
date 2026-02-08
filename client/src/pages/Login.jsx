@@ -20,11 +20,9 @@ const Login = () => {
         try {
             const response = await apiService.login({ email, password });
 
-            // The backend returns user data in response.data
             const userData = response.data;
             login(userData);
 
-            // Navigate based on role
             if (userData.role === 'admin') {
                 navigate('/admin');
             } else {
@@ -33,7 +31,6 @@ const Login = () => {
         } catch (err) {
             console.error('Login error:', err);
 
-            // Handle specific error cases
             if (err.message.includes('permanently banned')) {
                 setError('Your account has been permanently banned due to multiple fake reports. You cannot access the platform.');
             } else if (err.message.includes('Invalid credentials') || err.message.includes('401')) {

@@ -1,14 +1,12 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 
-// Public Pages
 import Home from './pages/Home';
 import CityMap from './pages/CityMap';
 import About from './pages/About';
 import Login from './pages/Login';
 import Register from './pages/Register';
 
-// User Pages
 import Dashboard from './pages/user/Dashboard';
 import ReportIssue from './pages/user/ReportIssue';
 import MyIssues from './pages/user/MyIssues';
@@ -16,14 +14,12 @@ import IssueDetail from './pages/user/IssueDetail';
 import VerifyIssues from './pages/user/VerifyIssues';
 import Profile from './pages/user/Profile';
 
-// Admin Pages
 import AdminDashboard from './pages/admin/AdminDashboard';
 import IssueIntelligence from './pages/admin/IssueIntelligence';
 import ManageIssues from './pages/admin/ManageIssues';
 import Analytics from './pages/admin/Analytics';
 import FeedbackMetrics from './pages/admin/FeedbackMetrics';
 
-// Protected Route Component
 const ProtectedRoute = ({ children, adminOnly = false }) => {
   const { user, loading } = useAuth();
 

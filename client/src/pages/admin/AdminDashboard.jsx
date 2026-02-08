@@ -39,7 +39,6 @@ const AdminDashboard = () => {
             const allIssues = response.data;
             setIssues(allIssues);
 
-            // Calculate stats
             const criticalUnresolved = allIssues.filter(
                 i => i.priority === 'High' && i.status !== 'Resolved'
             ).length;
@@ -64,10 +63,10 @@ const AdminDashboard = () => {
 
     const getPriorityColor = (priority) => {
         switch (priority) {
-            case 'High': return '#ef4444'; // Red
-            case 'Medium': return '#f59e0b'; // Yellow
-            case 'Low': return '#10b981'; // Green
-            default: return '#6b7280'; // Gray
+            case 'High': return '#ef4444';
+            case 'Medium': return '#f59e0b';
+            case 'Low': return '#10b981';
+            default: return '#6b7280';
         }
     };
 
@@ -83,12 +82,11 @@ const AdminDashboard = () => {
     };
 
     const getTopProblemZones = () => {
-        // Group issues by approximate zones
+
         const zones = {};
         issues.forEach(issue => {
             if (!issue.location) return;
 
-            // Round to 2 decimal places to group nearby issues
             const zoneLat = Math.round(issue.location.lat * 100) / 100;
             const zoneLng = Math.round(issue.location.lng * 100) / 100;
             const zoneKey = `${zoneLat},${zoneLng}`;

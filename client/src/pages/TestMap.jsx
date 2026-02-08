@@ -8,13 +8,11 @@ const TestMap = () => {
         const key = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
         setApiKey(key);
 
-        // Test if API key is loaded
         if (!key || key === 'YOUR_GOOGLE_MAPS_API_KEY_HERE') {
             setError('API key not configured in .env file');
             return;
         }
 
-        // Load Google Maps script manually to see error
         const script = document.createElement('script');
         script.src = `https://maps.googleapis.com/maps/api/js?key=${key}&libraries=visualization,places`;
         script.async = true;
@@ -24,7 +22,6 @@ const TestMap = () => {
             console.log('✅ Google Maps loaded successfully!');
             setError(null);
 
-            // Try to create a simple map
             try {
                 const map = new window.google.maps.Map(document.getElementById('test-map'), {
                     center: { lat: 19.0760, lng: 72.8777 },
@@ -45,7 +42,7 @@ const TestMap = () => {
         document.head.appendChild(script);
 
         return () => {
-            // Cleanup
+
             const existingScript = document.querySelector(`script[src*="maps.googleapis.com"]`);
             if (existingScript) {
                 existingScript.remove();

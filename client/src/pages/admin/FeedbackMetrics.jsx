@@ -26,7 +26,6 @@ const FeedbackMetrics = () => {
 
     const resolvedIssues = issues.filter(i => i.status === 'Resolved');
 
-    // Mock feedback data (in real app, this would come from API)
     const mockFeedback = resolvedIssues.slice(0, 4).map((issue, idx) => ({
         ...issue,
         rating: 5 - idx,

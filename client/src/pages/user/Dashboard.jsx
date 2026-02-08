@@ -27,7 +27,6 @@ const Dashboard = () => {
         }
     };
 
-    // Calculate stats from real data
     const myIssues = issues.filter(issue => issue.reportedBy?._id === user?._id || issue.reportedBy === user?._id);
     const resolvedIssues = myIssues.filter(issue => issue.status === 'Resolved');
     const pendingIssues = myIssues.filter(issue => issue.status === 'Pending');

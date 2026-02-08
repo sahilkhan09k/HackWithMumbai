@@ -16,7 +16,7 @@ const VerifyIssues = () => {
         try {
             setLoading(true);
             const response = await apiService.getAllIssues();
-            // Filter only pending and in-progress issues for verification
+
             const unverifiedIssues = response.data.filter(
                 issue => issue.status !== 'Resolved'
             );
@@ -34,7 +34,7 @@ const VerifyIssues = () => {
                 ? { ...issue, verified: true }
                 : issue
         ));
-        // In a real app, you'd call an API to record the verification
+
     };
 
     const handleAddEvidence = (issueId) => {

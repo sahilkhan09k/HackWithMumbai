@@ -43,7 +43,6 @@ const Register = () => {
                 password: formData.password
             });
 
-            // After successful registration, log the user in
             const userData = response.data;
             login(userData);
             navigate('/dashboard');

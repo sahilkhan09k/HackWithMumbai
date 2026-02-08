@@ -36,7 +36,6 @@ const CityMap = () => {
             const response = await apiService.getAllIssues();
             setIssues(response.data);
 
-            // Center map on first issue if available
             if (response.data.length > 0 && response.data[0].location) {
                 setMapCenter({
                     lat: response.data[0].location.lat,
@@ -57,10 +56,10 @@ const CityMap = () => {
 
     const getPriorityColor = (priority) => {
         switch (priority) {
-            case 'High': return '#ef4444'; // Red
-            case 'Medium': return '#f59e0b'; // Yellow
-            case 'Low': return '#10b981'; // Green
-            default: return '#6b7280'; // Gray
+            case 'High': return '#ef4444';
+            case 'Medium': return '#f59e0b';
+            case 'Low': return '#10b981';
+            default: return '#6b7280';
         }
     };
 

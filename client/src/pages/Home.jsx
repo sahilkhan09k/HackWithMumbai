@@ -30,12 +30,12 @@ const Home = () => {
                 }
             } catch (error) {
                 console.error('Error fetching stats:', error);
-                // Keep showing 0 values if API fails, don't fallback to fake numbers
+
             }
         };
 
         fetchStats();
-        // Refresh stats every 30 seconds
+
         const interval = setInterval(fetchStats, 30000);
         return () => clearInterval(interval);
     }, []);
