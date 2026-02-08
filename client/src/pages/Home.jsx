@@ -14,19 +14,23 @@ const Home = () => {
     useEffect(() => {
         const fetchStats = async () => {
             try {
-                const response = await fetch(`${import.meta.env.VITE_API_URL}/issue/homeStats`);
+                const apiUrl = `${import.meta.env.VITE_API_URL}/issue/homeStats`;
+                console.log('Fetching stats from:', apiUrl);
+
+                const response = await fetch(apiUrl);
+                console.log('Response status:', response.status);
+
                 const data = await response.json();
-                if (data.success) {
+                console.log('Response data:', data);
+
+                if (data.success && data.data) {
                     setStats(data.data);
+                } else {
+                    console.error('API returned unsuccessful response:', data);
                 }
             } catch (error) {
                 console.error('Error fetching stats:', error);
-                // Fallback to default values if API fails
-                setStats({
-                    reported: 1247,
-                    resolved: 892,
-                    activeZones: 34
-                });
+                // Keep showing 0 values if API fails, don't fallback to fake numbers
             }
         };
 

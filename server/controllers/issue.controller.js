@@ -359,20 +359,42 @@ export const reportIssueAsFake = asyncHandler(async (req, res) => {
 
 
 export const getHomeStats = asyncHandler(async (req, res) => {
-    const [totalIssues, resolvedIssues, activeZones] = await Promise.all([
-        Issue.countDocuments(),
-        Issue.countDocuments({ status: "Resolved" }),
-        Issue.distinct("location.coordinates").then(coords => {
-            // Count unique locations (approximate active zones)
-            return Math.ceil(coords.length / 10) || 1;
-        })
-    ]);
+    try {
+        const totalIssues = await Issue.countDocuments();
+        const resolvedIssues = await Issue.countDocuments({ status: "Resolved" });
 
-    return res
-        .status(200)
-        .json(new apiResponse(200, {
-            reported: totalIssues,
-            resolved: resolvedIssues,
-            activeZones: activeZones
-        }, "Homepage statistics fetched successfully"));
+        // Get unique locations by grouping coordinates
+        const uniqueLocations = await Issue.aggregate([
+            {
+                $group: {
+                    _id: {
+                        lat: { $arrayElemAt: ["$location.coordinates", 1] },
+                        lng: { $arrayElemAt: ["$location.coordinates", 0] }
+                    }
+                }
+            },
+            {
+                $count: "total"
+            }
+        ]);
+
+        const activeZones = uniqueLocations.length > 0 ? Math.ceil(uniqueLocations[0].total / 10) : 1;
+
+        return res
+            .status(200)
+            .json(new apiResponse(200, {
+                reported: totalIssues,
+                resolved: resolvedIssues,
+                activeZones: activeZones
+            }, "Homepage statistics fetched successfully"));
+    } catch (error) {
+        console.error('Error fetching home stats:', error);
+        return res
+            .status(200)
+            .json(new apiResponse(200, {
+                reported: 0,
+                resolved: 0,
+                activeZones: 0
+            }, "Homepage statistics fetched with defaults"));
+    }
 });
