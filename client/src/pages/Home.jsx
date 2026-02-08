@@ -14,7 +14,7 @@ const Home = () => {
     useEffect(() => {
         const fetchStats = async () => {
             try {
-                const response = await fetch(`${import.meta.env.VITE_API_URL}/api/v1/issue/homeStats`);
+                const response = await fetch(`${import.meta.env.VITE_API_URL}/issue/homeStats`);
                 const data = await response.json();
                 if (data.success) {
                     setStats(data.data);
