@@ -1,12 +1,21 @@
 import Groq from "groq-sdk";
 
-const groq = new Groq({
-    apiKey: process.env.GROQ_API_KEY
-});
+let groqClient = null;
+
+const getGroqClient = () => {
+    if (!groqClient && process.env.GROQ_API_KEY) {
+        groqClient = new Groq({
+            apiKey: process.env.GROQ_API_KEY
+        });
+    }
+    return groqClient;
+};
 
 export const aiAnalyzeIssue = async (text) => {
     try {
-        if (!process.env.GROQ_API_KEY) {
+        const groq = getGroqClient();
+
+        if (!groq) {
             console.warn("GROQ_API_KEY not found, using fallback analysis");
             return fallbackAnalysis(text);
         }
