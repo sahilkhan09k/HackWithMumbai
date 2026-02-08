@@ -16,9 +16,11 @@ export const aiAnalyzeIssue = async (text) => {
         const groq = getGroqClient();
 
         if (!groq) {
-            console.warn("GROQ_API_KEY not found, using fallback analysis");
+            console.warn("⚠️ GROQ_API_KEY not configured - using fallback rule-based analysis");
             return fallbackAnalysis(text);
         }
+
+        console.log("🚀 Attempting Groq API call for issue analysis...");
 
         const prompt = `Analyze this civic issue report and provide a JSON response with the following fields:
 - severity: number from 1-10 (1=minor, 10=critical)
@@ -47,12 +49,14 @@ Respond ONLY with valid JSON, no other text.`;
         });
 
         const responseText = completion.choices[0]?.message?.content || "{}";
+        console.log("📥 Groq API raw response:", responseText);
+
         const result = JSON.parse(responseText);
 
         const severity = Math.min(10, Math.max(1, result.severity || 5));
         const urgencyBoost = Math.min(15, Math.max(0, result.urgencyBoost || 0));
 
-        console.log(`✅ Groq Analysis: Severity=${severity}, Boost=${urgencyBoost}, Category=${result.category}`);
+        console.log(`✅ Groq API SUCCESS: Severity=${severity}, Boost=${urgencyBoost}, Category=${result.category}`);
 
         return {
             severity,
@@ -62,7 +66,13 @@ Respond ONLY with valid JSON, no other text.`;
         };
 
     } catch (error) {
-        console.error("Groq API failed, using fallback:", error.message);
+        console.error("❌ Groq API FAILED:", error.message);
+        console.error("📋 Error details:", {
+            name: error.name,
+            status: error.status,
+            type: error.type
+        });
+        console.log("🔄 Falling back to rule-based analysis...");
         return fallbackAnalysis(text);
     }
 };
