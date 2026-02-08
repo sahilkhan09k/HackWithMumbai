@@ -20,13 +20,11 @@ const calculateBaseScore = ({
     locationImpact,
     timePending
 }) => {
-    // Increased severity weight to 50% to ensure dangerous issues get HIGH priority
-    // Severity is the most critical factor for priority calculation
     return Math.round(
-        severity * 0.50 +        // 50% - Primary factor
-        locationImpact * 0.30 +  // 30% - High-impact locations
-        frequency * 0.10 +       // 10% - Issue frequency
-        timePending * 0.10       // 10% - Time pending
+        severity * 0.50 +
+        locationImpact * 0.30 +
+        frequency * 0.10 +
+        timePending * 0.10
     );
 };
 
@@ -49,11 +47,8 @@ const getTimeScore = () => 10;
 
 
 export const createIssue = asyncHandler(async (req, res) => {
-
-    /* ===== ADDITION 1: USER ID ===== */
     const userId = req.user._id;
 
-    /* ===== ADDITION 2: 30-MIN COOLDOWN ===== */
     const lastIssue = await Issue.findOne({ reportedBy: userId })
         .sort({ createdAt: -1 });
 
@@ -70,7 +65,6 @@ export const createIssue = asyncHandler(async (req, res) => {
         }
     }
 
-    /* ===== ADDITION 3: DAILY LIMIT (5/DAY) ===== */
     const todayCount = await Issue.countDocuments({
         reportedBy: userId,
         createdAt: {
@@ -82,7 +76,6 @@ export const createIssue = asyncHandler(async (req, res) => {
         throw new apiError(429, "Daily issue limit reached");
     }
 
-    /* ===== ORIGINAL CODE (UNCHANGED) ===== */
     const { title, description, lat, lng } = req.body;
 
     if (!title || !description || !lat || !lng) {
@@ -103,7 +96,6 @@ export const createIssue = asyncHandler(async (req, res) => {
         lng: Number(lng)
     };
 
-    /* ===== ADDITION 4: NEARBY LOCATION DEDUP (8 ISSUES) ===== */
     const RADIUS_IN_METERS = 50;
     const METERS_TO_DEGREES = 0.00045;
 
@@ -128,7 +120,6 @@ export const createIssue = asyncHandler(async (req, res) => {
         );
     }
 
-    /* ===== ORIGINAL CODE (UNCHANGED) ===== */
     const existingCount = await Issue.countDocuments({
         status: { $ne: "Resolved" }
     });
@@ -137,7 +128,6 @@ export const createIssue = asyncHandler(async (req, res) => {
     const locationImpact = getLocationImpact(description);
     const timeScore = getTimeScore();
 
-    /* ===== FIXED TEMPLATE STRING BUG ===== */
     const aiResult = await aiAnalyzeIssue(`${title}. ${description}`);
     const severityScore = (aiResult?.severity || 5) * 10;
     const aiBoost = aiResult?.urgencyBoost || 0;
@@ -263,7 +253,6 @@ export const getAdminIssueStats = asyncHandler(async (req, res) => {
 export const reportIssueAsFake = asyncHandler(async (req, res) => {
     const { issueId } = req.params;
 
-    // Verify admin role
     if (req.user.role !== 'admin') {
         throw new apiError(403, "Only admins can report issues as fake");
     }
@@ -272,40 +261,33 @@ export const reportIssueAsFake = asyncHandler(async (req, res) => {
         throw new apiError(400, "Invalid issue ID");
     }
 
-    // Find the issue
     const issue = await Issue.findById(issueId).populate("reportedBy");
 
     if (!issue) {
         throw new apiError(404, "Issue not found");
     }
 
-    // Check if already reported as fake
     if (issue.reportedAsFake) {
         throw new apiError(400, "This issue has already been reported as fake");
     }
 
-    // Mark issue as fake
     issue.reportedAsFake = true;
     issue.reportedAsFakeBy = req.user._id;
     issue.reportedAsFakeAt = new Date();
     await issue.save();
 
-    // Get the user who reported this issue
     const reportingUser = issue.reportedBy;
 
     if (!reportingUser) {
         throw new apiError(404, "User who reported this issue not found");
     }
 
-    // Reduce trust score by 25
     reportingUser.trustScore = Math.max(0, reportingUser.trustScore - 25);
 
     let userDeleted = false;
     let emailBanned = false;
 
-    // Ban and delete user if trust score reaches 0
     if (reportingUser.trustScore === 0) {
-        // Add email to banned list
         try {
             await BannedEmail.create({
                 email: reportingUser.email,
@@ -317,11 +299,9 @@ export const reportIssueAsFake = asyncHandler(async (req, res) => {
             });
             emailBanned = true;
         } catch (err) {
-            // Email might already be in banned list
             console.error('Error adding to banned list:', err);
         }
 
-        // Delete user from database
         await User.findByIdAndDelete(reportingUser._id);
         userDeleted = true;
 
@@ -340,7 +320,6 @@ export const reportIssueAsFake = asyncHandler(async (req, res) => {
             }, `Issue reported as fake. User's trust score reduced to 0. User has been permanently banned and deleted from the system. Email ${reportingUser.email} is now blacklisted.`));
     }
 
-    // If not banned, just save the updated trust score
     await reportingUser.save();
 
     return res
@@ -364,7 +343,6 @@ export const getHomeStats = asyncHandler(async (req, res) => {
         const resolvedIssues = await Issue.countDocuments({ status: "Resolved" });
         const pendingIssues = await Issue.countDocuments({ status: { $ne: "Resolved" } });
 
-        // Calculate active zones based on pending issues
         const activeZones = Math.max(1, Math.ceil(pendingIssues / 3));
 
         console.log('Stats:', { totalIssues, resolvedIssues, pendingIssues, activeZones });

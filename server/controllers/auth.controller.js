@@ -26,7 +26,6 @@ export const registerUser = asyncHandler(async (req, res) => {
     throw new apiError(400, "All fields are required");
   }
 
-  // Check if email is banned
   const bannedEmail = await BannedEmail.findOne({ email: email.toLowerCase() });
   if (bannedEmail) {
     throw new apiError(403, "This email address has been permanently banned from the platform due to multiple fake reports. You cannot create a new account with this email.");
@@ -70,7 +69,6 @@ export const loginUser = asyncHandler(async (req, res) => {
     throw new apiError(400, "All fields are required");
   }
 
-  // Check if email is banned
   const bannedEmail = await BannedEmail.findOne({ email: email.toLowerCase() });
   if (bannedEmail) {
     throw new apiError(403, "This email address has been permanently banned from the platform due to multiple fake reports. You cannot access your account.");
