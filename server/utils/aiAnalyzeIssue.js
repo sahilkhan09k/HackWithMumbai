@@ -1,132 +1,126 @@
-// Smart rule-based issue analysis (No API required!)
+import Groq from "groq-sdk";
+
+const groq = new Groq({
+    apiKey: process.env.GROQ_API_KEY
+});
+
 export const aiAnalyzeIssue = async (text) => {
     try {
-        const lowerText = text.toLowerCase();
-
-        // Initialize scores
-        let severity = 5;
-        let urgencyBoost = 0;
-        let category = "Other";
-        let explanation = "Standard priority";
-
-        // Category Detection
-        if (lowerText.includes('garbage') || lowerText.includes('trash') || lowerText.includes('waste') || lowerText.includes('dump')) {
-            category = "Waste";
-        } else if (lowerText.includes('road') || lowerText.includes('pothole') || lowerText.includes('street') || lowerText.includes('highway') || lowerText.includes('traffic')) {
-            category = "Road";
-        } else if (lowerText.includes('water') || lowerText.includes('pipe') || lowerText.includes('leak') || lowerText.includes('flood') || lowerText.includes('drain')) {
-            category = "Water";
-        } else if (lowerText.includes('light') || lowerText.includes('electricity') || lowerText.includes('power') || lowerText.includes('electric')) {
-            category = "Electricity";
+        if (!process.env.GROQ_API_KEY) {
+            console.warn("GROQ_API_KEY not found, using fallback analysis");
+            return fallbackAnalysis(text);
         }
 
-        // Severity Keywords (High Priority)
-        const highSeverityKeywords = ['broken', 'damaged', 'dangerous', 'hazard', 'emergency', 'urgent', 'critical', 'severe', 'major', 'accident', 'injury', 'flood', 'overflow', 'burst'];
-        const mediumSeverityKeywords = ['leaking', 'cracked', 'blocked', 'stuck', 'malfunctioning', 'not working', 'problem', 'issue'];
-        const lowSeverityKeywords = ['minor', 'small', 'slight', 'little'];
+        const prompt = `Analyze this civic issue report and provide a JSON response with the following fields:
+- severity: number from 1-10 (1=minor, 10=critical)
+- urgencyBoost: number from 0-15 (additional priority points)
+- category: one of ["Road", "Water", "Electricity", "Waste", "Other"]
+- explanation: brief reason for the severity rating
 
-        // Count severity indicators
-        let highCount = 0;
-        let mediumCount = 0;
-        let lowCount = 0;
+Issue: "${text}"
 
-        highSeverityKeywords.forEach(keyword => {
-            if (lowerText.includes(keyword)) highCount++;
-        });
-        mediumSeverityKeywords.forEach(keyword => {
-            if (lowerText.includes(keyword)) mediumCount++;
-        });
-        lowSeverityKeywords.forEach(keyword => {
-            if (lowerText.includes(keyword)) lowCount++;
-        });
+Respond ONLY with valid JSON, no other text.`;
 
-        // Calculate base severity
-        if (highCount > 0) {
-            severity = 8 + Math.min(highCount, 2);
-            explanation = "High severity issue requiring immediate attention";
-        } else if (mediumCount > 0) {
-            severity = 6 + Math.min(mediumCount, 2);
-            explanation = "Moderate severity issue needing prompt action";
-        } else if (lowCount > 0) {
-            severity = 3 + lowCount;
-            explanation = "Low severity issue for routine maintenance";
-        } else {
-            severity = 5;
-            explanation = "Standard priority issue";
-        }
-
-        // Location Impact (Urgency Boost)
-        const highImpactLocations = ['hospital', 'school', 'college', 'university', 'station', 'airport', 'main road', 'highway', 'market', 'mall', 'temple', 'church', 'mosque'];
-        const mediumImpactLocations = ['residential', 'neighborhood', 'colony', 'society', 'park', 'garden'];
-
-        highImpactLocations.forEach(location => {
-            if (lowerText.includes(location)) {
-                urgencyBoost += 10;
-                explanation = `Critical location (${location}) - high priority`;
-            }
+        const completion = await groq.chat.completions.create({
+            messages: [
+                {
+                    role: "system",
+                    content: "You are an AI assistant that analyzes civic infrastructure issues. Always respond with valid JSON only."
+                },
+                {
+                    role: "user",
+                    content: prompt
+                }
+            ],
+            model: "llama-3.3-70b-versatile",
+            temperature: 0.3,
+            max_tokens: 200,
         });
 
-        mediumImpactLocations.forEach(location => {
-            if (lowerText.includes(location)) {
-                urgencyBoost += 5;
-            }
-        });
+        const responseText = completion.choices[0]?.message?.content || "{}";
+        const result = JSON.parse(responseText);
 
-        // Time-sensitive keywords
-        const urgentKeywords = ['now', 'immediately', 'asap', 'urgent', 'emergency', 'quickly', 'fast'];
-        urgentKeywords.forEach(keyword => {
-            if (lowerText.includes(keyword)) {
-                urgencyBoost += 3;
-            }
-        });
+        const severity = Math.min(10, Math.max(1, result.severity || 5));
+        const urgencyBoost = Math.min(15, Math.max(0, result.urgencyBoost || 0));
 
-        // Safety concerns
-        const safetyKeywords = ['unsafe', 'danger', 'risk', 'accident', 'injury', 'hurt', 'harm', 'hazard'];
-        safetyKeywords.forEach(keyword => {
-            if (lowerText.includes(keyword)) {
-                urgencyBoost += 5;
-                severity = Math.min(10, severity + 1);
-                explanation = "Safety concern - requires immediate attention";
-            }
-        });
-
-        // Duration indicators (longer duration = higher priority)
-        if (lowerText.includes('weeks') || lowerText.includes('months')) {
-            urgencyBoost += 5;
-            explanation = "Long-standing issue requiring resolution";
-        } else if (lowerText.includes('days')) {
-            urgencyBoost += 3;
-        }
-
-        // Impact scale
-        const largeScaleKeywords = ['entire', 'whole', 'all', 'multiple', 'many', 'several'];
-        largeScaleKeywords.forEach(keyword => {
-            if (lowerText.includes(keyword)) {
-                urgencyBoost += 3;
-                severity = Math.min(10, severity + 1);
-            }
-        });
-
-        // Cap values
-        severity = Math.min(10, Math.max(1, severity));
-        urgencyBoost = Math.min(15, Math.max(0, urgencyBoost));
-
-        console.log(`✅ Smart Analysis: Severity=${severity}, Boost=${urgencyBoost}, Category=${category}`);
+        console.log(`✅ Groq Analysis: Severity=${severity}, Boost=${urgencyBoost}, Category=${result.category}`);
 
         return {
             severity,
             urgencyBoost,
-            category,
-            explanation
+            category: result.category || "Other",
+            explanation: result.explanation || "AI-based priority scoring"
         };
 
     } catch (error) {
-        console.error("Analysis failed:", error.message);
-        return {
-            severity: 6,
-            urgencyBoost: 5,
-            category: "Other",
-            explanation: "Default priority scoring applied"
-        };
+        console.error("Groq API failed, using fallback:", error.message);
+        return fallbackAnalysis(text);
     }
+};
+
+const fallbackAnalysis = (text) => {
+    const lowerText = text.toLowerCase();
+
+    let severity = 5;
+    let urgencyBoost = 0;
+    let category = "Other";
+    let explanation = "Standard priority";
+
+    if (lowerText.includes('garbage') || lowerText.includes('trash') || lowerText.includes('waste')) {
+        category = "Waste";
+    } else if (lowerText.includes('road') || lowerText.includes('pothole') || lowerText.includes('street')) {
+        category = "Road";
+    } else if (lowerText.includes('water') || lowerText.includes('pipe') || lowerText.includes('leak')) {
+        category = "Water";
+    } else if (lowerText.includes('light') || lowerText.includes('electricity') || lowerText.includes('power')) {
+        category = "Electricity";
+    }
+
+    const highSeverityKeywords = ['broken', 'damaged', 'dangerous', 'hazard', 'emergency', 'urgent', 'critical', 'severe'];
+    const mediumSeverityKeywords = ['leaking', 'cracked', 'blocked', 'stuck', 'malfunctioning'];
+
+    let highCount = 0;
+    let mediumCount = 0;
+
+    highSeverityKeywords.forEach(keyword => {
+        if (lowerText.includes(keyword)) highCount++;
+    });
+    mediumSeverityKeywords.forEach(keyword => {
+        if (lowerText.includes(keyword)) mediumCount++;
+    });
+
+    if (highCount > 0) {
+        severity = 8 + Math.min(highCount, 2);
+        explanation = "High severity issue";
+    } else if (mediumCount > 0) {
+        severity = 6 + Math.min(mediumCount, 2);
+        explanation = "Moderate severity issue";
+    }
+
+    const highImpactLocations = ['hospital', 'school', 'station', 'main road', 'highway', 'market'];
+    highImpactLocations.forEach(location => {
+        if (lowerText.includes(location)) {
+            urgencyBoost += 10;
+        }
+    });
+
+    const safetyKeywords = ['unsafe', 'danger', 'risk', 'accident', 'injury'];
+    safetyKeywords.forEach(keyword => {
+        if (lowerText.includes(keyword)) {
+            urgencyBoost += 5;
+            severity = Math.min(10, severity + 1);
+        }
+    });
+
+    severity = Math.min(10, Math.max(1, severity));
+    urgencyBoost = Math.min(15, Math.max(0, urgencyBoost));
+
+    console.log(`✅ Fallback Analysis: Severity=${severity}, Boost=${urgencyBoost}, Category=${category}`);
+
+    return {
+        severity,
+        urgencyBoost,
+        category,
+        explanation
+    };
 };
