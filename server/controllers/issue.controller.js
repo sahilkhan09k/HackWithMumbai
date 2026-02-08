@@ -56,8 +56,8 @@ export const createIssue = asyncHandler(async (req, res) => {
         const diffInMinutes =
             (Date.now() - new Date(lastIssue.createdAt).getTime()) / (1000 * 60);
 
-        if (diffInMinutes < 50) {
-            const remaining = Math.ceil(50 - diffInMinutes);
+        if (diffInMinutes < 15) {
+            const remaining = Math.ceil(15 - diffInMinutes);
             throw new apiError(
                 429,
                 `Please wait ${remaining} minutes before reporting another issue`
